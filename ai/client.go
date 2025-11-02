@@ -3,6 +3,8 @@ package ai
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
@@ -10,11 +12,23 @@ import (
 )
 
 var EmbeddingClient openai.Client
-var EmbeddingModel = "qwen3-embedding:0.6b"
+var EmbeddingModel = ""
 
 func init() {
+	model := os.Getenv("EMBEDDING_MODEL")
+	if model == "" {
+		log.Fatal("EMBEDDING_MODEL not found")
+	}
+
+	EmbeddingModel = model
+
+	url := os.Getenv("EMBEDDING_URL")
+	if url == "" {
+		log.Fatal("EMBEDDING_URL not found")
+	}
+
 	EmbeddingClient = openai.NewClient(
-		option.WithBaseURL("http://localhost:11434/v1"),
+		option.WithBaseURL(url),
 	)
 }
 
