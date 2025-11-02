@@ -27,8 +27,14 @@ func init() {
 		log.Fatal("EMBEDDING_URL not found")
 	}
 
+	key := os.Getenv("EMBEDDING_API_KEY")
+	if key == "" {
+		log.Println("EMBEDDING_API_KEY not found")
+	}
+
 	EmbeddingClient = openai.NewClient(
 		option.WithBaseURL(url),
+		option.WithAPIKey(key),
 	)
 }
 
