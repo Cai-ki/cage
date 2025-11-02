@@ -31,5 +31,12 @@ go.work.sum
 # .idea/
 # .vscode/
 
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
 localconfig/*.go
 !localconfig/config.example.go
+
+testdata/*
