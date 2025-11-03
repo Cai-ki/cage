@@ -3,9 +3,9 @@ package llm_test
 import (
 	"testing"
 
-	"github.com/Cai-ki/cage"
 	"github.com/Cai-ki/cage/llm"
 	"github.com/Cai-ki/cage/media"
+	"github.com/Cai-ki/cage/sugar"
 )
 
 func TestCompletion(t *testing.T) {
@@ -17,7 +17,7 @@ func TestCompletion(t *testing.T) {
 }
 
 func TestVision(t *testing.T) {
-	txt, err := llm.Vision(cage.Must(media.Screenshot()))
+	txt, err := llm.Vision(sugar.Must(media.Screenshot()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestVision(t *testing.T) {
 }
 
 func TestVisionWithPrompt(t *testing.T) {
-	txt, err := llm.VisionWithPrompt(cage.Must(media.Screenshot()), "图片整体基调是什么颜色？")
+	txt, err := llm.VisionWithPrompt(sugar.Must(media.Screenshot()), "图片整体基调是什么颜色？")
 	if err != nil {
 		t.Fatal(err)
 	}

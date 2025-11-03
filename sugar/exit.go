@@ -1,4 +1,4 @@
-package cage
+package sugar
 
 import (
 	"fmt"
