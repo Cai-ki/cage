@@ -263,13 +263,19 @@ func main() {
 
 	const t = 5
 
+	// 初始化 server
+	server := NewHTMLServer("/Users/caiki/Code/project/cage/net_value.csv")
+	server.Start("127.0.0.1:9999")
+
 	if os.Getenv("RUN_LOOP") == "true" {
 		for {
 			fmt.Println("🚀 Starting trading step...")
 			if err := RunTradingStep(symbol); err != nil {
 				fmt.Printf("❌ Error: %v\n", err)
 			}
-			fmt.Printf("⏳ Sleeping %d minutes...", t)
+			fmt.Printf("⏳ Sleeping %d minutes...\n", t)
+			time.Sleep(1 * time.Second)
+			server.Update()
 			time.Sleep(t * time.Minute)
 		}
 	} else {
