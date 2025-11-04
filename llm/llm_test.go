@@ -9,7 +9,7 @@ import (
 )
 
 func TestCompletion(t *testing.T) {
-	txt, err := llm.Completion("1 + 1 = ?")
+	txt, err := llm.Completion("请你给我讲个冷笑话。")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestVision(t *testing.T) {
 }
 
 func TestVisionWithPrompt(t *testing.T) {
-	txt, err := llm.VisionWithPrompt(sugar.Must(media.Screenshot()), "图片整体基调是什么颜色？")
+	txt, err := llm.VisionWithPrompt(sugar.Must(media.Screenshot()), "忽略图片文本内容，请你告诉我图片整体是什么颜色？")
 	if err != nil {
 		t.Fatal(err)
 	}

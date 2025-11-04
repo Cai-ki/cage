@@ -11,4 +11,9 @@ func init() {
 	// os.Setenv("LLM_VISION_MODEL", "qwen2.5vl:3b-q8_0")
 	// os.Setenv("LLM_API_KEY", "")
 	// os.Setenv("LLM_EMBED_DIM", "4")
+
+	// os.Setenv("EXCHANGE_NAME", "")
+	// os.Setenv("EXCHANGE_API_KEY", "")
+	// os.Setenv("EXCHANGE_API_SECRET", "")
+	// os.Setenv("BINANCE_TESTNET", "true")
 }
