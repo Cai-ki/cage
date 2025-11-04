@@ -25,7 +25,7 @@ type TradeRecord struct {
 	RiskView    string `json:"risk_view"`
 }
 
-const historyFile = "trading_history.json"
+const historyFile = "testdata/trading_history.json"
 
 func loadAllHistory(symbol string) []TradeRecord {
 	data, err := os.ReadFile(historyFile)
@@ -166,7 +166,7 @@ type PromptLogEntry struct {
 	Price       string    `json:"price_at_time"`
 }
 
-const promptLogFile = "prompt_log.json"
+const promptLogFile = "testdata/prompt_log.json"
 
 // appendPromptLog saves the full prompt and LLM interaction
 func appendPromptLog(entry PromptLogEntry) {

@@ -115,7 +115,7 @@ func calculateNetValueCurve(symbol string) []NetValuePoint {
 // Export to CSV for plotting
 func exportNetValueCSV(symbol string) error {
 	curve := calculateNetValueCurve(symbol)
-	file, err := os.Create("net_value.csv")
+	file, err := os.Create("testdata/net_value.csv")
 	if err != nil {
 		return err
 	}

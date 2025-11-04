@@ -264,7 +264,7 @@ func main() {
 	const t = 5
 
 	// 初始化 server
-	server := NewHTMLServer("/Users/caiki/Code/project/cage/net_value.csv")
+	server := NewHTMLServer("testdata/net_value.csv", "testdata/trading_history.json")
 	server.Start("127.0.0.1:9999")
 
 	if os.Getenv("RUN_LOOP") == "true" {
