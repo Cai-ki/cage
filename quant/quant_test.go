@@ -28,6 +28,8 @@ func TestFetchHistoricalPrices(t *testing.T) {
 func TestGetAccountBalance(t *testing.T) {
 	bal := sugar.Must(quant.GetAccountBalance("USDT"))
 	t.Log(bal)
+	bal = sugar.Must(quant.GetAccountBalance("BTC"))
+	t.Log(bal)
 }
 
 func TestListOpenOrders(t *testing.T) {
