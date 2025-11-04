@@ -176,17 +176,31 @@ const indexHTML = `<!DOCTYPE html>
         chart.data.datasets[3].data = priceRes.map(d => d.price);
         chart.update('none');
 
-        // Update history list
+        // Update history list with state preservation
         const historyList = document.getElementById('historyList');
+
+        // Save expanded state by timestamp
+        const expanded = new Set();
+        historyList.querySelectorAll('.history-item').forEach(item => {
+            const details = item.querySelector('details');
+            if (details && details.open) {
+                const ts = item.getAttribute('data-timestamp');
+                if (ts) expanded.add(ts);
+            }
+        });
+
+        // Render new list, preserving expanded state
         historyList.innerHTML = historyRes.map(function(item) {
-          return '<div class="history-item">' +
+          return '<div class="history-item" data-timestamp="' + item.timestamp + '">' +
             '<div>' +
               '<span class="history-time">' + new Date(item.timestamp).toLocaleString() + '</span>' +
               '<span class="history-action ' + item.action + '">' + item.action.toUpperCase() + '</span>' +
               '<span class="history-price">@ ' + item.price + ' USDT</span>' +
             '</div>' +
             '<div class="history-reason">' + (item.reason || '') + '</div>' +
-            '<details style="margin-top:6px; font-size:0.85em; color:#555;">' +
+            '<details style="margin-top:6px; font-size:0.85em; color:#555;"' + 
+              (expanded.has(item.timestamp) ? ' open' : '') + 
+            '>' +
               '<summary style="cursor:pointer; user-select:none;">🔍 Analyst & Risk Details</summary>' +
               '<div style="margin-top:4px; padding-left:10px; border-left:2px solid #ddd;">' +
                 '<div><strong>Analyst:</strong> ' + (item.analyst_view || '') + '</div>' +

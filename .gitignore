@@ -40,3 +40,4 @@ localconfig/*
 !localconfig/config.example.go
 
 testdata/*
+!testdata/example.txt
