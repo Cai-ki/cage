@@ -36,8 +36,7 @@ go.work.sum
 .AppleDouble
 .LSOverride
 
-localconfig/*
-!localconfig/config.example.go
+config/config.local.go
 
 testdata/*
 !testdata/example.txt

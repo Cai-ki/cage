@@ -4,6 +4,7 @@ go 1.24.3
 
 require (
 	github.com/adshao/go-binance/v2 v2.8.7
+	github.com/joho/godotenv v1.5.1
 	github.com/openai/openai-go v1.12.0
 )
 

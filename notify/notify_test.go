@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/Cai-ki/cage/localconfig"
+	_ "github.com/Cai-ki/cage/config"
 	"github.com/Cai-ki/cage/notify"
 )
 

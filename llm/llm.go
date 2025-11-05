@@ -3,7 +3,7 @@ package llm
 import (
 	"image"
 
-	_ "github.com/Cai-ki/cage/localconfig"
+	_ "github.com/Cai-ki/cage/config"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 )

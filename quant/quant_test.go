@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	_ "github.com/Cai-ki/cage/localconfig"
+	_ "github.com/Cai-ki/cage/config"
 	"github.com/Cai-ki/cage/quant"
 	"github.com/Cai-ki/cage/sugar"
 )
