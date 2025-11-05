@@ -34,6 +34,12 @@ func TestDescribeToShellScript(t *testing.T) {
 }
 
 func TestDescribeToRunnableShell(t *testing.T) {
+	desc := "列出当前目录下以及其子目录下所有 .go 文件，并统计总行数"
+	cmd, _ := helper.DescribeToRunnableShell(desc)
+	fmt.Println("=== 统计 Go 行数 ===")
+	fmt.Println(cmd)
+	return
+
 	desc1 := "列出当前目录下所有 .go 文件，并统计总行数"
 	cmd1, _ := helper.DescribeToRunnableShell(desc1)
 	fmt.Println("=== 统计 Go 行数 ===")
