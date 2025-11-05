@@ -2,7 +2,8 @@ package llm
 
 import (
 	"os"
-	"strconv"
+
+	"github.com/Cai-ki/cage/sugar"
 )
 
 type Config struct {
@@ -12,20 +13,19 @@ type Config struct {
 	VisionModel string // 默认视觉模型
 	EmbedModel  string // 默认 embedding 模型
 	EmbedDim    int
+	Temperature float64
+	TopP        float64
 }
 
 func LoadConfig() (*Config, error) {
-	embedDim, err := strconv.Atoi(os.Getenv("LLM_EMBED_DIM"))
-	if err != nil {
-		embedDim = 0
-	}
-
 	return &Config{
 		APIKey:      os.Getenv("LLM_API_KEY"),
 		BaseURL:     os.Getenv("LLM_BASE_URL"),
 		Model:       os.Getenv("LLM_MODEL"),
 		VisionModel: os.Getenv("LLM_VISION_MODEL"),
 		EmbedModel:  os.Getenv("LLM_EMBED_MODEL"),
-		EmbedDim:    embedDim,
+		EmbedDim:    sugar.StrToTWithDefault(os.Getenv("LLM_EMBED_DIM"), 0),
+		Temperature: sugar.StrToTWithDefault(os.Getenv("LLM_TEMPERATURE"), 0.0),
+		TopP:        sugar.StrToTWithDefault(os.Getenv("LLM_TOPP"), 0.9),
 	}, nil
 }

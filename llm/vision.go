@@ -44,6 +44,8 @@ func (c *LLMClient) visionWithPrompt(img image.Image, prompt string) (string, er
 					},
 				}),
 			},
+			Temperature: openai.Float(c.cfg.Temperature),
+			TopP:        openai.Float(c.cfg.TopP),
 		},
 	)
 	if err != nil {
