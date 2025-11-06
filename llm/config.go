@@ -26,6 +26,6 @@ func LoadConfig() (*Config, error) {
 		EmbedModel:  os.Getenv("LLM_EMBED_MODEL"),
 		EmbedDim:    sugar.StrToTWithDefault(os.Getenv("LLM_EMBED_DIM"), 0),
 		Temperature: sugar.StrToTWithDefault(os.Getenv("LLM_TEMPERATURE"), 0.0),
-		TopP:        sugar.StrToTWithDefault(os.Getenv("LLM_TOPP"), 0.9),
+		TopP:        sugar.StrToTWithDefault(os.Getenv("LLM_TOPP"), 0.8),
 	}, nil
 }

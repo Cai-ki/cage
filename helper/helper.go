@@ -46,5 +46,5 @@ func Do(param Param) (string, error) {
 		return "", err
 	}
 
-	return llm.Completion(prompt)
+	return llm.CompletionBySystem(prompt)
 }

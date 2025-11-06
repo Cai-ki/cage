@@ -1,6 +1,6 @@
 # 包功能说明
 
-sugar 包是一个 Go 语言工具包，提供了一系列语法糖和便捷函数，旨在简化日常开发中的常见操作。该包的设计目标是通过提供类型安全的泛型函数和错误处理辅助工具，减少样板代码的编写，提高开发效率。典型使用场景包括条件断言、错误处理、类型转换和零值处理等，特别适合在需要快速原型开发或简化复杂条件判断的项目中使用。
+sugar 包是一个 Go 语言工具包，提供了一系列便捷的辅助函数，旨在简化日常开发中的常见操作。该包的核心设计目标是减少样板代码，提高开发效率，通过类型安全的泛型实现和简洁的 API 设计，为开发者提供可靠的编程工具。典型使用场景包括条件断言、错误处理、零值判断、字符串转换等常见编程任务，特别适合在需要快速原型开发或代码简化的项目中应用。
 
 ## 结构体与接口
 
@@ -11,52 +11,52 @@ sugar 包是一个 Go 语言工具包，提供了一系列语法糖和便捷函�
 ```go
 func Assert(cond bool, msg string)
 ```
-当条件 `cond` 为 false 时，该函数会触发 panic，并使用指定的消息 `msg` 作为错误信息。主要用于在开发阶段进行条件检查，确保程序状态符合预期。
+Assert 函数用于条件断言，当条件 cond 为 false 时会触发 panic，并使用提供的消息 msg 作为错误信息。该函数适用于在开发阶段验证程序逻辑的正确性。
 
 ```go
 func Assertf(cond bool, format string, args ...any)
 ```
-与 `Assert` 功能类似，但支持格式化错误消息。当条件 `cond` 为 false 时，会根据 `format` 和 `args` 生成格式化字符串，并以此触发 panic。
+Assertf 函数是 Assert 的格式化版本，当条件 cond 为 false 时会触发 panic，并使用 format 和 args 参数格式化错误信息。支持动态生成详细的错误消息。
 
 ```go
 func Coalsece[T comparable](values ...T) T
 ```
-该泛型函数接收多个同类型参数，返回第一个非零值。如果所有值都是零值，则返回该类型的零值。适用于在多个可能的值中选择第一个有效值的场景。
+Coalesce 函数接受一个可变参数列表 values，返回第一个非零值。如果所有值都是零值，则返回类型 T 的零值。该函数使用泛型约束 comparable，适用于任何可比较的类型。
 
 ```go
 func ExitIfNot(cond bool, msg ...string)
 ```
-当条件 `cond` 为 false 时，程序会立即退出。如果提供了 `msg` 参数，会将第一个消息字符串写入标准错误输出。常用于命令行工具中的前置条件检查。
+ExitIfNot 函数检查条件 cond，如果为 false 则退出程序。可选的 msg 参数会写入标准错误输出，支持提供多个字符串但只使用第一个。
 
 ```go
 func ExitIfNotf(cond bool, format string, args ...any)
 ```
-与 `ExitIfNot` 功能类似，但支持格式化错误消息。当条件不满足时，会根据 `format` 和 `args` 生成格式化字符串并输出到标准错误，然后退出程序。
+ExitIfNotf 函数是 ExitIfNot 的格式化版本，当条件 cond 为 false 时退出程序，并使用 format 和 args 参数格式化错误消息到标准错误输出。
 
 ```go
 func ExitIfErr(err error, msg ...string)
 ```
-当错误 `err` 不为 nil 时，程序会立即退出。如果提供了 `msg` 参数，会将第一个消息字符串写入标准错误输出。用于简化错误处理流程。
+ExitIfErr 函数检查错误 err，如果不为 nil 则退出程序。可选的 msg 参数会写入标准错误输出，支持提供多个字符串但只使用第一个。
 
 ```go
 func ExitIfErrf(err error, format string, args ...any)
 ```
-与 `ExitIfErr` 功能类似，但支持格式化错误消息。当错误不为 nil 时，会根据 `format` 和 `args` 生成格式化字符串并输出到标准错误，然后退出程序。
+ExitIfErrf 函数是 ExitIfErr 的格式化版本，当错误 err 不为 nil 时退出程序，并使用 format 和 args 参数格式化错误消息到标准错误输出。
 
 ```go
 func Must[T any](v T, err error) T
 ```
-该泛型函数接收一个值 `v` 和一个错误 `err`。如果错误不为 nil，会触发 panic；否则返回原始值 `v`。常用于简化必须成功操作的错误处理，如文件打开、数据解析等。
+Must 函数接受一个值 v 和错误 err，如果 err 不为 nil 则触发 panic，否则返回 v。该函数常用于简化错误处理，特别是在初始化操作中。
 
 ```go
 func StrToT[T any](str string) (T, error)
 ```
-将字符串 `str` 转换为指定的类型 `T`。支持基本数据类型包括整数、浮点数、布尔值和字符串。如果转换失败，返回零值和错误信息。使用反射实现类型安全的转换。
+StrToT 函数将字符串 str 转换为指定的类型 T。支持整数、浮点数、布尔值和字符串类型转换。如果转换失败，返回类型 T 的零值和错误信息。
 
 ```go
 func StrToTWithDefault[T any](str string, def T) T
 ```
-将字符串 `str` 转换为指定的类型 `T`，如果转换失败则返回默认值 `def`。支持的基本数据类型与 `StrToT` 相同，但在转换失败时不会返回错误，而是直接返回提供的默认值。
+StrToTWithDefault 函数将字符串 str 转换为指定的类型 T，如果转换失败则返回默认值 def。支持整数、浮点数、布尔值和字符串类型转换，提供安全的转换机制。
 
 ## 变量与常量
 

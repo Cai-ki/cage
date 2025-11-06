@@ -68,6 +68,16 @@ func Completion(prompt string) (string, error) {
 	return defaultClient.completion(prompt)
 }
 
+// Completion generates text from a text prompt.
+func CompletionBySystem(prompt string) (string, error) {
+	err := initDefaultClient()
+	if err != nil {
+		return "", err
+	}
+
+	return defaultClient.completionBySystem(prompt)
+}
+
 // Vision analyzes an image and returns a textual description.
 // Note: This function's implementation might require updates based on how openai-go handles images.
 func Vision(img image.Image) (string, error) {
