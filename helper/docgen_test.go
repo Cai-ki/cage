@@ -7,9 +7,22 @@ import (
 	"github.com/Cai-ki/cage/helper"
 )
 
+func TestAnalyzePackage(t *testing.T) {
+	// param := helper.AnalyzePackageParam{Dir: "/Users/caiki/Code/project/cage/config"}
+	// txt, err := param.Do()
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	// t.Log(param.Prompt())
+	// t.Log(param)
+
+	// t.Log(txt)
+	t.Log(helper.AnalyzePackage("/Users/caiki/Code/project/cage/config"))
+}
+
 func TestGeneratePackageDoc(t *testing.T) {
-	pkgPath := "."
-	err := helper.GeneratePackageDoc(pkgPath, path.Join(pkgPath, "doc.md"))
+	p := "/Users/caiki/Code/project/cage/config"
+	err := helper.GeneratePackageDoc(p, path.Join(p, "doc.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
