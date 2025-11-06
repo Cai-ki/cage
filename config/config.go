@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/joho/godotenv"
-	_ "github.com/joho/godotenv"
 )
 
 func init() {
