@@ -13,9 +13,9 @@ type DescribeToShellScriptParam struct {
 var _ Param = (*DescribeToShellScriptParam)(nil)
 
 //go:embed prompts/DescribeToShellScriptPrompt.md
-var DescribeToShellScriptPrompt string
+var describeToShellScriptPrompt string
 
-func (DescribeToShellScriptParam) Prompt() string { return DescribeToShellScriptPrompt }
+func (DescribeToShellScriptParam) Prompt() string { return describeToShellScriptPrompt }
 
 func (this *DescribeToShellScriptParam) Prepare() error {
 	this.Text = this.Input
@@ -40,9 +40,9 @@ type DescribeToRunnableShellParam struct {
 var _ Param = (*DescribeToRunnableShellParam)(nil)
 
 //go:embed prompts/DescribeToRunnableShellPrompt.md
-var DescribeToRunnableShellPrompt string
+var describeToRunnableShellPrompt string
 
-func (DescribeToRunnableShellParam) Prompt() string { return DescribeToRunnableShellPrompt }
+func (DescribeToRunnableShellParam) Prompt() string { return describeToRunnableShellPrompt }
 
 func (this *DescribeToRunnableShellParam) Prepare() error {
 	this.Text = this.Input

@@ -21,7 +21,7 @@ func TestAnalyzePackage(t *testing.T) {
 }
 
 func TestGeneratePackageDoc(t *testing.T) {
-	p := "/Users/caiki/Code/project/cage/config"
+	p := "."
 	err := helper.GeneratePackageDoc(p, path.Join(p, "doc.md"))
 	if err != nil {
 		t.Fatal(err)

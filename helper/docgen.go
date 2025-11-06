@@ -19,9 +19,9 @@ type AnalyzePackageParam struct {
 var _ Param = (*AnalyzePackageParam)(nil)
 
 //go:embed prompts/AnalyzePackagePrompt.md
-var AnalyzePackagePrompt string
+var analyzePackagePrompt string
 
-func (AnalyzePackageParam) Prompt() string { return AnalyzePackagePrompt }
+func (AnalyzePackageParam) Prompt() string { return analyzePackagePrompt }
 
 func (this *AnalyzePackageParam) Prepare() error {
 	files, err := readGoFilesRecursively(this.Dir)
