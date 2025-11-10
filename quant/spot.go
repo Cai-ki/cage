@@ -26,8 +26,8 @@ func init() {
 		return
 	}
 
-	apiKey := os.Getenv("EXCHANGE_API_KEY")
-	secretKey := os.Getenv("EXCHANGE_API_SECRET")
+	apiKey := os.Getenv("EXCHANGE_SPOT_API_KEY")
+	secretKey := os.Getenv("EXCHANGE_SPOT_API_SECRET")
 	if apiKey == "" || secretKey == "" {
 		return
 	}
