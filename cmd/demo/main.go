@@ -12,6 +12,8 @@ func main() {
 
 	// 主页
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Received request: Host=%s, URL=%s", r.Host, r.URL.Path)
+
 		// 可选：检测是否来自 HTTPS（通过 Cloudflare）
 		if r.Header.Get("X-Forwarded-Proto") == "https" {
 			fmt.Fprintf(w, "✅ Hello from Go! You're on HTTPS via Cloudflare.\n")
@@ -26,5 +28,5 @@ func main() {
 	})
 
 	log.Println("Go server starting on :80")
-	log.Fatal(http.ListenAndServe(":80", mux))
+	log.Fatal(http.ListenAndServe("0.0.0.0:80", mux))
 }
