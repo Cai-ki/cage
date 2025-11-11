@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Cai-ki/cage/llm"
+	"github.com/Cai-ki/cage/llm/mcp"
 	"github.com/Cai-ki/cage/media"
 	"github.com/Cai-ki/cage/sugar"
 )
@@ -56,6 +57,21 @@ func TestCompletionByParams(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(msg.Content, "\n", msg.ToolCalls[0].RawJSON())
+
+	// 定义测试用的参数结构体
+	type AddArgs struct {
+		A float64 `json:"a"`
+		B float64 `json:"b"`
+	}
+
+	// 定义测试用的函数
+	addFunc := func(args AddArgs) (interface{}, error) {
+		return map[string]interface{}{"result": args.A + args.B}, nil
+	}
+
+	mcp.RegisterTool("add", addFunc, AddArgs{})
+	res, err := mcp.ExecuteToolCalls(msg)
+	t.Log(res[0].OfTool.Content.OfString)
 }
 
 func TestVision(t *testing.T) {

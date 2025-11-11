@@ -1,6 +1,6 @@
 # 包功能说明
 
-本包提供了一个简洁易用的 LLM（大语言模型）客户端库，基于 OpenAI 兼容的 API 设计。它封装了文本生成、视觉理解、文本嵌入等核心 AI 功能，支持通过环境变量配置 API 密钥、基础 URL 和模型参数。该包采用单例模式设计，自动初始化默认客户端，简化了调用流程，适用于需要快速集成 AI 能力的各种应用场景，如智能对话系统、图像分析工具和语义搜索应用。
+本包提供了一个基于 OpenAI API 的 LLM（大语言模型）客户端封装，支持文本生成、视觉分析、文本嵌入等多种 AI 功能。设计目标是简化 AI 服务的集成过程，通过环境变量配置和默认客户端模式降低使用门槛。该包支持兼容 OpenAI API 的第三方服务（如 Ollama），并提供了灵活的参数配置和工具调用机制，适用于需要 AI 能力的各种应用场景，如智能对话、图像分析、语义搜索等。
 
 ## 结构体与接口
 
@@ -17,15 +17,33 @@ type Config struct {
 }
 ```
 
-Config 结构体用于配置 LLM 客户端的各项参数。APIKey 是访问 API 所需的密钥；BaseURL 支持兼容 OpenAI API 的自部署服务；Model 指定默认的文本生成模型；VisionModel 指定视觉分析模型；EmbedModel 指定文本嵌入模型；EmbedDim 设置嵌入向量的维度；Temperature 控制生成文本的随机性；TopP 用于核采样，控制生成文本的多样性。
+Config 结构体用于配置 LLM 客户端参数。APIKey 是 API 访问密钥；BaseURL 支持兼容 API 的服务地址；Model 指定默认文本模型；VisionModel 指定默认视觉模型；EmbedModel 指定默认嵌入模型；EmbedDim 设置嵌入向量的维度；Temperature 控制生成文本的随机性；TopP 用于核采样，控制生成文本的多样性。
 
 ```go
 type LLMClient struct {
-    // 包含未导出字段
+    // 未导出字段
 }
 ```
 
-LLMClient 是 LLM 客户端的主要结构体，封装了与 OpenAI 兼容 API 的交互逻辑。它内部维护配置信息和 OpenAI 客户端实例，提供文本生成、视觉分析和文本嵌入等功能的实现。
+LLMClient 是 LLM 客户端的主要结构体，封装了与 OpenAI API 的交互逻辑。它通过内部配置和 OpenAI 客户端实例提供各种 AI 功能。
+
+```go
+type MCPClient struct {
+    // 未导出字段
+}
+```
+
+MCPClient 是模型控制协议客户端，用于管理和执行工具调用。它维护了一个工具注册表，能够解析和执行来自 AI 模型的工具调用请求。
+
+```go
+type ToolExecutor struct {
+    Name     string
+    Func     interface{}
+    ArgsType interface{}
+}
+```
+
+ToolExecutor 用于存储工具的元信息和执行函数。Name 是工具名称；Func 是工具执行函数，必须符合 func(args ArgsStruct) (interface{}, error) 的签名；ArgsType 是参数结构的零值，用于 JSON 反序列化。
 
 ## 函数
 
@@ -33,73 +51,97 @@ LLMClient 是 LLM 客户端的主要结构体，封装了与 OpenAI 兼容 API �
 func LoadConfig() (*Config, error)
 ```
 
-LoadConfig 函数从环境变量加载配置信息并返回 Config 结构体实例。它会读取 LLM_API_KEY、LLM_BASE_URL、LLM_MODEL 等环境变量，并将字符串类型的值转换为相应的数据类型。如果环境变量未设置，会使用默认值。
+LoadConfig 从环境变量加载配置并返回 Config 实例。它会读取 LLM_API_KEY、LLM_BASE_URL、LLM_MODEL 等环境变量，为未设置的数值型参数提供默认值。
 
 ```go
 func Completion(prompt string) (string, error)
 ```
 
-Completion 函数使用默认客户端对给定的文本提示生成补全内容。它接收一个文本提示作为参数，返回生成的文本内容。内部会确保默认客户端已初始化，然后调用客户端的 completion 方法。
+Completion 使用默认客户端根据文本提示生成文本回复。它接收用户输入的提示文本，返回 AI 生成的文本内容。
 
 ```go
 func CompletionBySystem(prompt string) (string, error)
 ```
 
-CompletionBySystem 函数使用系统消息角色生成文本内容。它接收一个系统提示作为参数，返回生成的文本内容。这种方法适用于需要系统指令引导的对话场景。
+CompletionBySystem 使用系统角色消息生成文本回复。适合需要系统指令的场景，如设定 AI 行为模式。
 
 ```go
 func CompletionByParams(args ...AllowedParam) (openai.ChatCompletionMessage, error)
 ```
 
-CompletionByParams 函数支持通过参数灵活配置聊天补全请求。它接收可变数量的 AllowedParam 参数，返回完整的聊天补全消息对象。允许组合用户消息、系统消息和工具调用等不同类型的参数。
+CompletionByParams 支持灵活的参数组合生成文本回复。可以接收消息函数和工具函数等多种参数类型，返回完整的聊天完成消息。
 
 ```go
 func Vision(img image.Image) (string, error)
 ```
 
-Vision 函数对输入的图像进行分析并返回文本描述。它接收一个 image.Image 对象作为参数，使用默认的视觉提示"Describe this image."，返回对图像的文本描述。
+Vision 分析图像并返回文本描述。使用默认的视觉提示词，适合基础的图像理解任务。
 
 ```go
 func VisionWithPrompt(img image.Image, prompt string) (string, error)
 ```
 
-VisionWithPrompt 函数使用自定义提示对图像进行分析。它接收图像和自定义提示文本作为参数，返回根据提示分析得到的文本结果。适用于需要特定图像分析任务的场景。
+VisionWithPrompt 使用自定义提示词分析图像。允许指定具体的分析要求，如图像中特定内容的识别或描述。
 
 ```go
 func Embedding(text string) ([]float32, error)
 ```
 
-Embedding 函数将输入文本转换为向量表示。它接收文本字符串作为参数，返回对应的浮点数向量切片。向量维度使用配置中的默认值，适用于语义搜索和文本相似度计算。
+Embedding 返回输入文本的向量表示。使用配置中指定的嵌入模型和维度，返回 float32 类型的向量数组。
 
 ```go
 func EmbeddingWithDim(text string, dimensions int) ([]float32, error)
 ```
 
-EmbeddingWithDim 函数将文本转换为指定维度的向量表示。它接收文本和期望的向量维度作为参数，返回对应维度的浮点数向量。允许覆盖配置中的默认维度设置。
+EmbeddingWithDim 返回指定维度的文本嵌入向量。允许覆盖配置中的默认维度设置，适合需要特定向量大小的场景。
 
 ```go
 func UserMessage(prompt string) MessageFunc
 ```
 
-UserMessage 函数创建一个用户消息的参数生成函数。它接收提示文本作为参数，返回一个 MessageFunc 函数，该函数在调用时会生成对应的用户消息参数。
+UserMessage 创建用户角色消息的函数。返回的 MessageFunc 可用于 CompletionByParams 参数。
 
 ```go
 func SystemMessage(prompt string) MessageFunc
 ```
 
-SystemMessage 函数创建一个系统消息的参数生成函数。它接收系统提示文本作为参数，返回一个 MessageFunc 函数，用于生成系统角色消息参数。
+SystemMessage 创建系统角色消息的函数。用于设定 AI 的系统指令或行为约束。
 
 ```go
 func ToolMessage(prompt string, toolCallID string) MessageFunc
 ```
 
-ToolMessage 函数创建一个工具消息的参数生成函数。它接收消息内容和工具调用 ID 作为参数，返回一个 MessageFunc 函数，用于生成工具调用结果消息。
+ToolMessage 创建工具角色消息的函数。用于向 AI 返回工具调用的执行结果。
 
 ```go
 func ToolsByJson(jstr string) ToolFunc
 ```
 
-ToolsByJson 函数从 JSON 字符串创建工具参数。它接收 JSON 格式的字符串作为参数，解析后返回一个 ToolFunc 函数，该函数提供工具调用定义供模型使用。
+ToolsByJson 从 JSON 字符串创建工具定义函数。将 JSON 格式的工具定义转换为 OpenAI 工具参数。
+
+```go
+func NewMCPClient() *MCPClient
+```
+
+NewMCPClient 创建新的 MCP 客户端实例。返回一个空的工具注册表，用于管理工具调用。
+
+```go
+func RegisterTool(name string, fn interface{}, argsType interface{})
+```
+
+RegisterTool 向默认 MCP 客户端注册工具函数。name 是工具名称，fn 是工具执行函数，argsType 是参数结构的零值。
+
+```go
+func ExecuteToolCalls(message openai.ChatCompletionMessage) ([]openai.ChatCompletionMessageParamUnion, error)
+```
+
+ExecuteToolCalls 执行 OpenAI 返回消息中的工具调用。自动解析工具参数，调用注册的工具函数，并返回工具执行结果的消息数组。
+
+```go
+func GetToolsDefinition() ([]openai.ChatCompletionToolParam, error)
+```
+
+GetToolsDefinition 返回注册工具的 JSON Schema 定义。目前未实现完整功能，需要手动提供工具定义或实现 schema 生成逻辑。
 
 ## 变量与常量
 
@@ -107,4 +149,4 @@ ToolsByJson 函数从 JSON 字符串创建工具参数。它接收 JSON 格式�
 var ErrUnexpectedResponse = errors.New("llm: unexpected API response")
 ```
 
-ErrUnexpectedResponse 变量表示 API 返回了意外的响应格式。当 API 响应缺少预期的数据字段或返回空结果时返回此错误。
+ErrUnexpectedResponse 在 API 返回意外响应时返回，如空数据数组或缺失必要字段。
