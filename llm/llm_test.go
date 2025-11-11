@@ -16,6 +16,48 @@ func TestCompletion(t *testing.T) {
 	t.Log(txt)
 }
 
+func TestCompletionBySystem(t *testing.T) {
+	txt, err := llm.CompletionBySystem("请你给我讲个冷笑话。")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(txt)
+}
+
+func TestCompletionByParams(t *testing.T) {
+	msg, err := llm.CompletionByParams(llm.UserMessage("调用function : add解决问题，1 + 1 = ？"),
+		llm.ToolsByJson(`
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "add",
+      "description": "将两个数字相加并返回结果。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "number",
+            "description": "第一个加数"
+          },
+          "b": {
+            "type": "number",
+            "description": "第二个加数"
+          }
+        },
+        "required": ["a", "b"]
+      }
+    }
+  }
+]		
+`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(msg.Content, "\n", msg.ToolCalls[0].RawJSON())
+}
+
 func TestVision(t *testing.T) {
 	txt, err := llm.Vision(sugar.Must(media.Screenshot()))
 	if err != nil {

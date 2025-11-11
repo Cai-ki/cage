@@ -78,6 +78,15 @@ func CompletionBySystem(prompt string) (string, error) {
 	return defaultClient.completionBySystem(prompt)
 }
 
+func CompletionByParams(args ...AllowedParam) (openai.ChatCompletionMessage, error) {
+	err := initDefaultClient()
+	if err != nil {
+		return openai.ChatCompletionMessage{}, err
+	}
+
+	return defaultClient.completionByParams(args...)
+}
+
 // Vision analyzes an image and returns a textual description.
 // Note: This function's implementation might require updates based on how openai-go handles images.
 func Vision(img image.Image) (string, error) {
