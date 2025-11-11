@@ -17,7 +17,7 @@ const performanceFile = "trading_performance.json"
 
 var recordMutex sync.RWMutex
 var do sync.Once
-var globalRecord *PerformanceRecord
+var records []PerformanceRecord
 
 // PerformanceRecord 记录每日/每次交易的绩效
 type PerformanceRecord struct {
@@ -28,18 +28,22 @@ type PerformanceRecord struct {
 	CumulativeROI  float64 `json:"cumulative_roi"`  // 累计收益率（%）
 	TotalTrades    int     `json:"total_trades"`    // 总交易次数
 	CurrentPrice   float64 `json:"current_price"`
+
+	Prompt    string `json:"prompt"`
+	Decision  string `json:"decision"`
+	ToolCalls string `json:"tool_calls"`
 }
 
-func LoadOrCreatePerformanceRecord() (*PerformanceRecord, error) {
+func LoadOrCreatePerformanceRecord() ([]PerformanceRecord, error) {
 	recordMutex.Lock()
 	defer recordMutex.Unlock()
 
 	data, err := os.ReadFile(performanceFile)
 	if err == nil {
-		var record PerformanceRecord
-		if json.Unmarshal(data, &record) == nil && record.Date == time.Now().Format("2006-01-02") {
-			globalRecord = &record
-			return &record, nil
+		var loadedRecords []PerformanceRecord
+		if json.Unmarshal(data, &loadedRecords) == nil && len(loadedRecords) > 0 {
+			records = loadedRecords
+			return loadedRecords, nil
 		}
 	}
 
@@ -52,34 +56,74 @@ func LoadOrCreatePerformanceRecord() (*PerformanceRecord, error) {
 	price, _ := quant.FuturesGetTickerPrice("BTCUSDT")
 	currentPrice := sugar.Must(sugar.StrToT[float64](price))
 
-	record := &PerformanceRecord{
-		Date:           time.Now().Format("2006-01-02"),
+	firstRecord := PerformanceRecord{
+		Date:           time.Now().Format("2006-01-02 15:04:05"),
 		InitialBalance: initialEquity,
 		CurrentBalance: initialEquity,
 		CumulativePnL:  0.0,
 		CumulativeROI:  0.0,
 		TotalTrades:    0, // 初始化为 0
 		CurrentPrice:   currentPrice,
+		Prompt:         "",
+		Decision:       "",
+		ToolCalls:      "",
 	}
 
-	globalRecord = record
-	savePerformanceRecordWithoutLock(record)
+	records = []PerformanceRecord{firstRecord}
+	savePerformanceRecordsWithoutLock(records)
 
-	return record, nil
+	return records, nil
 }
 
 // 记录交易并增加总交易次数
-func RecordTrade() error {
+func RecordTrade(prompt, decision, toolcalls string, add bool) error {
 	recordMutex.Lock()
 	defer recordMutex.Unlock()
 
-	record, err := LoadOrCreatePerformanceRecord()
-	if err != nil {
-		return err
+	// 加载现有记录
+	data, err := os.ReadFile(performanceFile)
+	if err == nil {
+		var loadedRecords []PerformanceRecord
+		if json.Unmarshal(data, &loadedRecords) == nil && len(loadedRecords) > 0 {
+			records = loadedRecords
+		}
 	}
 
+	var lastRecord PerformanceRecord
+	if len(records) > 0 {
+		lastRecord = records[len(records)-1]
+	} else {
+		// 如果没有记录，创建初始记录
+		initialEquity, err := getAccountEquity()
+		if err != nil {
+			return err
+		}
+		price, _ := quant.FuturesGetTickerPrice("BTCUSDT")
+		currentPrice := sugar.Must(sugar.StrToT[float64](price))
+
+		lastRecord = PerformanceRecord{
+			Date:           time.Now().Format("2006-01-02 15:04:05"),
+			InitialBalance: initialEquity,
+			CurrentBalance: initialEquity,
+			CumulativePnL:  0.0,
+			CumulativeROI:  0.0,
+			TotalTrades:    0,
+			CurrentPrice:   currentPrice,
+			Prompt:         "",
+			Decision:       "",
+			ToolCalls:      "",
+		}
+		records = []PerformanceRecord{lastRecord}
+	}
+
+	// 创建新记录，基于最新记录
+	newRecord := lastRecord // 复制最新记录
+	newRecord.Date = time.Now().Format("2006-01-02 15:04:05")
+
 	// 增加总交易次数
-	record.TotalTrades++
+	if add {
+		newRecord.TotalTrades++
+	}
 
 	// 重新计算当前权益（因为可能刚交易完）
 	currentEquity, err := getAccountEquity()
@@ -87,15 +131,20 @@ func RecordTrade() error {
 		return err
 	}
 
-	record.CurrentBalance = currentEquity
-	record.CumulativePnL = currentEquity - record.InitialBalance
-	record.CumulativeROI = (record.CumulativePnL / record.InitialBalance) * 100
+	newRecord.CurrentBalance = currentEquity
+	newRecord.CumulativePnL = currentEquity - newRecord.InitialBalance
+	newRecord.CumulativeROI = (newRecord.CumulativePnL / newRecord.InitialBalance) * 100
 
 	price, _ := quant.FuturesGetTickerPrice("BTCUSDT")
-	record.CurrentPrice = sugar.Must(sugar.StrToT[float64](price))
+	newRecord.CurrentPrice = sugar.Must(sugar.StrToT[float64](price))
+	newRecord.Prompt = prompt
+	newRecord.Decision = decision
+	newRecord.ToolCalls = toolcalls
 
-	globalRecord = record
-	savePerformanceRecordWithoutLock(record)
+	// 添加新记录到数组
+	records = append(records, newRecord)
+
+	savePerformanceRecordsWithoutLock(records)
 	return nil
 }
 
@@ -103,14 +152,35 @@ func GetPerformanceRecord() *PerformanceRecord {
 	recordMutex.RLock()
 	defer recordMutex.RUnlock()
 
-	if globalRecord == nil {
-		record, err := LoadOrCreatePerformanceRecord()
-		if err != nil {
-			return nil
+	// 尝试从文件加载最新记录
+	data, err := os.ReadFile(performanceFile)
+	if err == nil {
+		var loadedRecords []PerformanceRecord
+		if json.Unmarshal(data, &loadedRecords) == nil && len(loadedRecords) > 0 {
+			records = loadedRecords
 		}
-		return record
 	}
-	return globalRecord
+
+	if len(records) > 0 {
+		return &records[len(records)-1] // 返回最后一个记录（最新的）
+	}
+	return nil
+}
+
+func GetAllPerformanceRecords() []PerformanceRecord {
+	recordMutex.RLock()
+	defer recordMutex.RUnlock()
+
+	// 尝试从文件加载最新记录
+	data, err := os.ReadFile(performanceFile)
+	if err == nil {
+		var loadedRecords []PerformanceRecord
+		if json.Unmarshal(data, &loadedRecords) == nil {
+			records = loadedRecords
+		}
+	}
+
+	return records
 }
 
 func getAccountEquity() (float64, error) {
@@ -135,31 +205,25 @@ func getAccountEquity() (float64, error) {
 	return totalEquity, nil
 }
 
-func savePerformanceRecordWithoutLock(record *PerformanceRecord) {
-	data, _ := json.MarshalIndent(record, "", "  ")
+func savePerformanceRecordsWithoutLock(records []PerformanceRecord) {
+	data, _ := json.MarshalIndent(records, "", "  ")
 	os.WriteFile(performanceFile, data, 0644)
 }
 
-func savePerformanceRecord(record *PerformanceRecord) {
+func savePerformanceRecords(records []PerformanceRecord) {
 	recordMutex.Lock()
 	defer recordMutex.Unlock()
-	savePerformanceRecordWithoutLock(record)
+	savePerformanceRecordsWithoutLock(records)
 }
 
 func formatPerformanceSummary() string {
-	record, err := LoadOrCreatePerformanceRecord()
-	if err != nil {
+	record := GetPerformanceRecord()
+	if record == nil {
 		return "Performance data unavailable"
 	}
 
-	today := time.Now().Format("2006-01-02")
-	if record.Date != today {
-		// 应该不会发生，因为 LoadOrCreate 会处理
-		return "Performance data outdated"
-	}
-
 	return fmt.Sprintf(
-		"Strategy Performance (since start):\n"+
+		"Strategy Performance (latest record):\n"+
 			"- Initial Capital: %.2f USDT\n"+
 			"- Current Balance: %.2f USDT\n"+
 			"- Cumulative PnL: %.2f USDT\n"+

@@ -33,13 +33,19 @@ func RunTradingStep(symbol string) error {
 		if err != nil {
 			return err
 		}
+		log.Println("Execute tool calls success")
+		err := RecordTrade(prompt, rsp.Content, rsp.ToolCalls[0].RawJSON(), true)
+		if err != nil {
+			return err
+		}
 
-		err := RecordTrade()
+	} else {
+		err := RecordTrade(prompt, rsp.Content, "", false)
 		if err != nil {
 			return err
 		}
 	}
-
+	log.Println("Record trade success")
 	return nil
 }
 
@@ -144,19 +150,21 @@ func getTradingContext(symbol string) (timeStr, sym, price, usdtBal, positionInf
 }
 
 func BuildPrompt(symbol string) string {
-	dataSource := "Binance Testnet（当前位于测试环境，请策略必须激进。不注重亏损。必须开多 / 开空 / 平仓。）"
+	tag := "当前位于测试环境，策略允许激进，允许高风险高收益操作。"
 
 	perfSummary := formatPerformanceSummary()
-	record, _ := LoadOrCreatePerformanceRecord()
+	record := GetPerformanceRecord()
 	totalTrades := record.TotalTrades
 
 	timeStr, sym, price, usdtBal, positionInfo, k5m, k15m, k1h, k4h := getTradingContext(symbol)
 
 	return fmt.Sprintf(TradingAgentPromptTemplate,
-		timeStr, sym, price, usdtBal, totalTrades, dataSource, perfSummary, positionInfo, k5m, k15m, k1h, k4h)
+		tag, timeStr, sym, price, usdtBal, totalTrades, perfSummary, positionInfo, k5m, k15m, k1h, k4h)
 }
 
 const TradingAgentPromptTemplate = `
+%s
+
 你是一个专业的加密货币期货交易员，具备丰富的市场分析和风险管理经验。请根据以下实时上下文信息，制定并执行合理的交易决策。
 
 CURRENT CONTEXT:
@@ -165,7 +173,6 @@ CURRENT CONTEXT:
 - Current price: %s USDT
 - USDT balance: %s
 - Total trades: %d
-- Data source: %s
 
 STRATEGY PERFORMANCE:
 %s
