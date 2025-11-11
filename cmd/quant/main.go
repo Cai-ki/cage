@@ -6,8 +6,6 @@ import (
 )
 
 func main() {
-	log.Println("this is quant")
-
 	if RunLoop {
 		for {
 			log.Println("Starting trading step...")

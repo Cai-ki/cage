@@ -15,6 +15,9 @@ import (
 )
 
 func RunTradingStep(symbol string) error {
+	_, _ = LoadOrCreatePerformanceRecord()
+	do.Do(StartServer)
+
 	prompt := BuildPrompt(symbol)
 
 	log.Println(prompt)
