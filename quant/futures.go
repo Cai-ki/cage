@@ -146,3 +146,20 @@ func FuturesGetKlines(symbol, interval string, limit int) ([]*futures.Kline, err
 		Limit(limit).
 		Do(context.Background())
 }
+
+func FuturesGetTickerPrice(symbol string) (string, error) {
+	if futuresClient == nil {
+		return "", errors.New("futures client not initialized")
+	}
+	symbol = standardizeSymbolFutures(symbol)
+	resp, err := futuresClient.NewPremiumIndexService().
+		Symbol(symbol).
+		Do(context.Background())
+	if err != nil {
+		return "", err
+	}
+	if len(resp) > 0 {
+		return resp[0].MarkPrice, nil // 或者 resp[0].LastPrice
+	}
+	return "", errors.New("no price data")
+}

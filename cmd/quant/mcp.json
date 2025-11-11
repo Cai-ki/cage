@@ -1,0 +1,71 @@
+[
+    {
+        "type": "function",
+        "function": {
+            "name": "futures_buy_market",
+            "description": "在合约市场使用市价单开立多头仓位。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "合约交易对符号，例如 'BTCUSDT'。"
+                    },
+                    "quantity": {
+                        "type": "number",
+                        "description": "下单数量（以合约单位计，如 BTC 数量）。",
+                        "minimum": 0.001
+                    }
+                },
+                "required": [
+                    "symbol",
+                    "quantity"
+                ]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "futures_sell_market",
+            "description": "在合约市场使用市价单开立空头仓位或平仓多头仓位。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "合约交易对符号，例如 'BTCUSDT'。"
+                    },
+                    "quantity": {
+                        "type": "number",
+                        "description": "下单数量（以合约单位计）。",
+                        "minimum": 0.001
+                    }
+                },
+                "required": [
+                    "symbol",
+                    "quantity"
+                ]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "futures_close_position",
+            "description": "自动检测并平掉指定交易对的所有合约持仓（使用 ReduceOnly 模式）。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "合约交易对符号，例如 'BTCUSDT'。"
+                    }
+                },
+                "required": [
+                    "symbol"
+                ]
+            }
+        }
+    }
+]
