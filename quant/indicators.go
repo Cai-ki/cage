@@ -213,44 +213,105 @@ func Format(t time.Time) string {
 	return t.In(loc).Format("2006-01-02 15:04:05")
 }
 
-// 输出清晰格式（推荐）
+// // 输出清晰格式
+// func (multi *MultiTimeframeIndicator) ToSimpleString() string {
+// 	var buf strings.Builder
+
+// 	// 头部信息
+// 	buf.WriteString(fmt.Sprintf("symbol: %s\n", multi.Symbol))
+// 	buf.WriteString(fmt.Sprintf("timestamp: %s\n", Format(multi.Timestamp)))
+// 	buf.WriteString("---\n")
+
+// 	// 各周期数据
+// 	for tf, indicator := range multi.Timeframes {
+// 		buf.WriteString(fmt.Sprintf("### %s周期\n", tf))
+// 		buf.WriteString(fmt.Sprintf("\n- price: %.2f\n", indicator.Price))
+
+// 		// 分组输出指标
+// 		buf.WriteString("\n- 趋势指标: ")
+// 		for k, v := range indicator.Indicators {
+// 			if strings.HasPrefix(k, "ema_") || strings.HasPrefix(k, "ma_") {
+// 				buf.WriteString(fmt.Sprintf("%s=%.2f ", k, v))
+// 			}
+// 		}
+// 		buf.WriteString("\n")
+
+// 		buf.WriteString("\n- 动量指标: ")
+// 		for k, v := range indicator.Indicators {
+// 			if strings.Contains(k, "rsi") || strings.Contains(k, "macd") || strings.Contains(k, "stoch") {
+// 				buf.WriteString(fmt.Sprintf("%s=%.2f ", k, v))
+// 			}
+// 		}
+// 		buf.WriteString("\n")
+
+// 		buf.WriteString("\n- 波动指标: ")
+// 		for k, v := range indicator.Indicators {
+// 			if strings.Contains(k, "atr") || strings.Contains(k, "bb_") {
+// 				buf.WriteString(fmt.Sprintf("%s=%.2f ", k, v))
+// 			}
+// 		}
+// 		buf.WriteString("\n\n")
+// 	}
+
+// 	return buf.String()
+// }
+
+// 输出清晰格式（适合AI分析）
 func (multi *MultiTimeframeIndicator) ToSimpleString() string {
 	var buf strings.Builder
 
-	// 头部信息
-	buf.WriteString(fmt.Sprintf("symbol: %s\n", multi.Symbol))
-	buf.WriteString(fmt.Sprintf("timestamp: %s\n", Format(multi.Timestamp)))
-	buf.WriteString("---\n")
+	// buf.WriteString("## 技术指标分析\n\n")
 
-	// 各周期数据
-	for tf, indicator := range multi.Timeframes {
-		buf.WriteString(fmt.Sprintf("### %s周期\n", tf))
-		buf.WriteString(fmt.Sprintf("\n- price: %.2f\n", indicator.Price))
+	// 按时间周期顺序输出（从大到小）
+	timeframeOrder := []string{"1h", "15m", "5m"}
 
-		// 分组输出指标
-		buf.WriteString("\n- 趋势指标: ")
-		for k, v := range indicator.Indicators {
-			if strings.HasPrefix(k, "ema_") || strings.HasPrefix(k, "ma_") {
-				buf.WriteString(fmt.Sprintf("%s=%.2f ", k, v))
+	for _, tf := range timeframeOrder {
+		if indicator, exists := multi.Timeframes[tf]; exists {
+			buf.WriteString(fmt.Sprintf("### %s周期\n", tf))
+			buf.WriteString(fmt.Sprintf("- 当前价格: %.2f\n", indicator.Price))
+
+			// 趋势指标
+			buf.WriteString("- 趋势指标: ")
+			trendCount := 0
+			for k, v := range indicator.Indicators {
+				if strings.HasPrefix(k, "ema_") || strings.HasPrefix(k, "ma_") {
+					if trendCount > 0 {
+						buf.WriteString(" | ")
+					}
+					buf.WriteString(fmt.Sprintf("%s=%.2f", k, v))
+					trendCount++
+				}
 			}
-		}
-		buf.WriteString("\n")
+			buf.WriteString("\n")
 
-		buf.WriteString("\n- 动量指标: ")
-		for k, v := range indicator.Indicators {
-			if strings.Contains(k, "rsi") || strings.Contains(k, "macd") || strings.Contains(k, "stoch") {
-				buf.WriteString(fmt.Sprintf("%s=%.2f ", k, v))
+			// 动量指标
+			buf.WriteString("- 动量指标: ")
+			momentumCount := 0
+			for k, v := range indicator.Indicators {
+				if strings.Contains(k, "rsi") || strings.Contains(k, "macd") || strings.Contains(k, "stoch") {
+					if momentumCount > 0 {
+						buf.WriteString(" | ")
+					}
+					buf.WriteString(fmt.Sprintf("%s=%.2f", k, v))
+					momentumCount++
+				}
 			}
-		}
-		buf.WriteString("\n")
+			buf.WriteString("\n")
 
-		buf.WriteString("\n- 波动指标: ")
-		for k, v := range indicator.Indicators {
-			if strings.Contains(k, "atr") || strings.Contains(k, "bb_") {
-				buf.WriteString(fmt.Sprintf("%s=%.2f ", k, v))
+			// 波动指标
+			buf.WriteString("- 波动指标: ")
+			volatilityCount := 0
+			for k, v := range indicator.Indicators {
+				if strings.Contains(k, "atr") || strings.Contains(k, "bb_") {
+					if volatilityCount > 0 {
+						buf.WriteString(" | ")
+					}
+					buf.WriteString(fmt.Sprintf("%s=%.2f", k, v))
+					volatilityCount++
+				}
 			}
+			buf.WriteString("\n\n")
 		}
-		buf.WriteString("\n\n")
 	}
 
 	return buf.String()

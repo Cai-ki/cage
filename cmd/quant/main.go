@@ -11,7 +11,6 @@ func main() {
 			log.Println("Starting trading step...")
 
 			startTime := time.Now()
-
 			if err := RunTradingStep(Symbol); err != nil {
 				log.Printf("Error: %v\n", err)
 			}

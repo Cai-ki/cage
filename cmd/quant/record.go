@@ -226,19 +226,8 @@ func formatPerformanceSummary() string {
 	}
 
 	return fmt.Sprintf(
-		"策略表现（截止到上次决策）:\n"+
-			"- Initial Capital: %.2f USDT\n"+
-			"- Current Balance: %.2f USDT\n"+
-			"- Cumulative PnL: %.2f USDT\n"+
-			"- Cumulative ROI: %.2f%%\n"+
-			"- Total Trades: %d\n"+
-			"- 上次决策时间: %s\n"+
-			"- 上次决策记忆: \n\n%s",
-		record.InitialBalance,
-		record.CurrentBalance,
-		record.CumulativePnL,
-		record.CumulativeROI,
-		record.TotalTrades,
+		"- 决策时间: %s\n"+
+			"- 分析逻辑: \n%s",
 		record.Date,
 		record.Memory,
 	)

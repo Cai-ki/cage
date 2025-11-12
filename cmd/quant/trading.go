@@ -122,28 +122,98 @@ func getTradingContext(symbol string) (timeStr, sym, price, usdtBal, positionInf
 		posAmt, parseErr := strconv.ParseFloat(position.PositionAmt, 64)
 		var actualDirection string
 		if parseErr != nil || posAmt == 0 {
-			actualDirection = "NEUTRAL"
+			actualDirection = "中性"
 		} else if posAmt > 0 {
-			actualDirection = "LONG"
+			actualDirection = "多头"
 		} else {
-			actualDirection = "SHORT"
+			actualDirection = "空头"
 		}
 
 		pnlPercentage := calculatePnLPercentage(position)
+		// positionInfo = fmt.Sprintf(
+		// 	"当前持仓状态: %s %s %s (%s 模式)\n"+
+		// 		"- 开仓均价: %s USDT\n"+
+		// 		"- 标记价格: %s USDT\n"+
+		// 		"- 未实现盈亏: %s USDT (%s%%)\n"+
+		// 		"- 杠杆倍数: %s倍\n"+
+		// 		"- 持仓方向: %s (实际: %s)\n"+
+		// 		"- 强平价格: %s USDT\n"+
+		// 		"- 保证金模式: %s\n"+
+		// 		"- 名义价值: %s USDT",
+		// 	actualDirection, position.PositionAmt, position.Symbol, position.PositionSide, position.EntryPrice, position.MarkPrice, position.UnRealizedProfit, pnlPercentage, position.Leverage, position.PositionSide, actualDirection, position.LiquidationPrice, position.MarginType, position.Notional)
+
+		// 计算这些新指标
+		notional, _ := strconv.ParseFloat(position.Notional, 64)
+		leverage, _ := strconv.ParseFloat(position.Leverage, 64)
+		markPrice, _ := strconv.ParseFloat(position.MarkPrice, 64)
+		liquidationPrice, _ := strconv.ParseFloat(position.LiquidationPrice, 64)
+		unrealizedProfit, _ := strconv.ParseFloat(position.UnRealizedProfit, 64)
+
+		// 占用保证金（正确）
+		marginUsed := notional / leverage
+
+		// 总权益 = USDT余额 + 持仓价值 + 未实现盈亏（修正）
+		usdtBalance, _ := strconv.ParseFloat(usdtBal, 64)
+		totalEquity := usdtBalance + notional + unrealizedProfit
+
+		// 仓位占比（正确）
+		positionRatio := (marginUsed / totalEquity) * 100
+
+		// 距离强平百分比（修正）
+		liquidationDistance := 0.0
+		if actualDirection == "多头" {
+			liquidationDistance = ((markPrice - liquidationPrice) / markPrice) * 100
+		} else if actualDirection == "空头" {
+			liquidationDistance = ((liquidationPrice - markPrice) / markPrice) * 100
+		} else {
+			liquidationDistance = 100.0 // 无持仓
+		}
+
+		// 风险等级（修正-针对20倍杠杆）
+		riskLevel := "低风险"
+		if liquidationDistance < 5 {
+			riskLevel = "🔥极高风险"
+		} else if liquidationDistance < 10 {
+			riskLevel = "⚠️高风险"
+		} else if liquidationDistance < 15 {
+			riskLevel = "中等风险"
+		}
+
+		// 持仓方向映射
+		var positionSideMap = map[string]string{
+			"BOTH":  "双向",
+			"LONG":  "多头",
+			"SHORT": "空头",
+		}
+
+		// 保证金模式映射
+		var marginTypeMap = map[string]string{
+			"cross":    "全仓",
+			"isolated": "逐仓",
+		}
+
 		positionInfo = fmt.Sprintf(
-			"Current Position: %s %s %s (in %s mode)\n"+
-				"- Entry Price: %s USDT\n"+
-				"- Mark Price: %s USDT\n"+
-				"- Unrealized PnL: %s USDT (%s%%)\n"+
-				"- Leverage: %sx\n"+
-				"- Position Side: %s (actual: %s)\n"+ // 这里需要2个参数
-				"- Liquidation Price: %s USDT\n"+
-				"- Margin Type: %s\n"+
-				"- Notional Value: %s USDT",
-			actualDirection, position.PositionAmt, position.Symbol, position.PositionSide, // 1-4
-			position.EntryPrice, position.MarkPrice, position.UnRealizedProfit, pnlPercentage, // 5-8
-			position.Leverage, position.PositionSide, actualDirection, // 9-11 (Position Side 和 actual 需要分开传)
-			position.LiquidationPrice, position.MarginType, position.Notional) // 12-14
+			"- 持仓状态: %s %s %s (%s 模式)\n"+
+				"- 开仓均价: %s USDT\n"+
+				"- 标记价格: %s USDT\n"+
+				"- 未实现盈亏: %s USDT (%s%%)\n"+
+				"- 杠杆倍数: %s倍\n"+
+				"- 持仓方向: %s (实际: %s)\n"+
+				"- 强平价格: %s USDT\n"+
+				"- 保证金模式: %s\n"+
+				"- 名义价值: %s USDT\n"+
+				"### 风险与仓位\n"+
+				"- 占用保证金: %.2f USDT\n"+
+				"- 总权益: %.2f USDT\n"+
+				"- 仓位占比: %.1f%%\n"+
+				"- 距离强平: %.1f%%\n"+
+				"- 风险等级: %s",
+			actualDirection, position.PositionAmt, position.Symbol,
+			positionSideMap[position.PositionSide],
+			position.EntryPrice, position.MarkPrice, position.UnRealizedProfit, pnlPercentage,
+			position.Leverage, positionSideMap[position.PositionSide], actualDirection,
+			position.LiquidationPrice, marginTypeMap[position.MarginType], position.Notional,
+			marginUsed, totalEquity, positionRatio, liquidationDistance, riskLevel)
 	}
 
 	// // 平衡的中频配置 - 推荐使用
@@ -193,7 +263,8 @@ func getTradingContext(symbol string) (timeStr, sym, price, usdtBal, positionInf
 	nextFundingTimeStr := time.Unix(nextFundingTime/1000, 0).In(loc).Format("2006-01-02 15:04:05")
 	// 输出：2024-01-16T00:00:00+08:00 （北京时间，比UTC快8小时）
 	makerRate, takerRate, err := quant.FuturesGetFeeRateForSymbol("BTCUSDT")
-	rate = fmt.Sprintf("- Fee rates - Maker: %s, Taker: %s\n- Current Funding Rate: %s\n- Next Funding Time: %s\n", makerRate, takerRate, fundingRate, nextFundingTimeStr)
+	rate = fmt.Sprintf("- 手续费率 - Maker(挂单): %s, Taker(吃单): %s\n- 当前资金费率: %s\n- 下次资金费率时间: %s\n",
+		makerRate, takerRate, fundingRate, nextFundingTimeStr)
 	return
 }
 
@@ -210,73 +281,84 @@ func BuildPrompt(symbol string) string {
 }
 
 const TradingAgentPromptTemplate = `
-# 你是一个激进但专业的加密货币期货交易员，擅长抓住市场机会并主动管理风险。你的目标是最大化资金利用率，在控制风险的前提下积极交易。
+---
+**你是一个激进但专业的加密货币期货交易员，擅长抓住市场机会并主动管理风险。你的目标是最大化资金利用率，在控制风险的前提下积极交易。**
+---
 
-## CURRENT CONTEXT:
-- Time: %s (UTC+8 / Beijing Time)
-- Symbol: %s
-- Current price: %s USDT
-- USDT balance: %s
-- Total trades: %d
+## 账户与市场概览:
+- 当前时间: %s (UTC+8 / Beijing Time)
+- 交易标的: %s
+- 实时价格: %s USDT
+- 可用保证金: %s USDT
+- 历史交易次数: %d
 
-## STRATEGY PERFORMANCE:
-
+## 上次决策回顾:
 %s
 
 ## 当前持仓状态:
-
 %s
 
-## 当前市场:
-
+## 技术指标分析:
 %s
 
-## 资金费用以及手续费说明:
-
+## 费率信息:
 %s
+
+## 仓位管理规则：
+**计算公式**：
+仓位占比 = (持仓保证金 ÷ 总权益) × 100%%
+持仓保证金 = 持仓价值 ÷ 杠杆倍数
+持仓价值 = 持仓数量 × 当前价格
+总权益 = 可用保证金 + 持仓价值 + 未实现盈亏
+
+**仓位目标**：
+- 理想仓位：30%%-60%%
+- 最小仓位：20%%
+- 警戒仓位：>80%%
+- 当前评估：如仓位<20%%，必须积极加仓
 
 ## 交易策略指导：
 
-**资金管理原则：**
-- 单次开仓使用资金的 40%%-60%%，不要低于20%%
-- 保持资金利用率在60%%以上，避免资金闲置
-- 只有在市场信号极度混乱时才考虑低于20%%的仓位
+**趋势确认原则：**
+- 3个周期指标一致 → 重仓参与（40%%-60%%）
+- 2个周期指标一致 → 中等仓位（25%%-40%%） 
+- 仅1个周期有信号 → 轻仓试探（15%%-25%%）
+- 无明确信号 → 保持现有仓位或微调
 
-**持仓管理原则：**
-- 不要轻易平仓，除非达到止盈目标或出现明确的趋势反转信号
-- 持仓期间可以适当加仓或减仓，但不要完全退出
-- 利用技术指标的持续性，让利润奔跑
+**持仓管理纪律：**
+- 盈利<5%%时：坚决持有，不加不减
+- 盈利5%%-10%%时：可考虑部分止盈，但保留至少50%%仓位
+- 盈利>10%%时：逐步止盈，但保持20%%以上仓位参与趋势
+- 浮亏时：基于技术指标判断是否加仓摊薄成本，不要恐慌性平仓
 
-**趋势判断指南：**
-- 当多个周期指标一致时，应该重仓参与（40%%-60%%）
-- 短期指标与长期指标矛盾时，可以轻仓试探（20%%-30%%）
-- 只有在所有周期都显示震荡无方向时，才考虑观望
+## 具体信号指南：
 
-## 具体操作建议：
+**强烈做多信号（满足3项）：**
+- 多周期EMA金叉排列
+- RSI(14)在40-65健康区间
+- MACD柱状线扩大
+- 成交量持续放大
+→ 开多50%%-60%%
 
-**做多信号（满足以下2项以上）：**
-- EMA金叉 + RSI < 70 + MACD > 0 → 开多40%%-60%%
-- 价格突破布林带上轨 + 成交量放大 → 开多30%%-50%%
-- 多周期趋势一致向上 → 开多50%%-60%%
+**强烈做空信号（满足3项）：**
+- 多周期EMA死叉排列  
+- RSI(14)在35-60区间
+- MACD负值扩大
+- 放量下跌
+→ 开空50%%-60%%
 
-**做空信号（满足以下2项以上）：**
-- EMA死叉 + RSI > 30 + MACD < 0 → 开空40%%-60%%
-- 价格跌破布林带下轨 + 成交量放大 → 开空30%%-50%%
-- 多周期趋势一致向下 → 开空50%%-60%%
+**平仓条件（必须满足2项）：**
+- 达到8%%以上盈利 + 出现明显顶底背离
+- RSI进入极端区域(>90或<10) + 成交量异常
+- 多周期趋势同步反转 + 关键支撑阻力突破
 
-**平仓条件（满足以下任意1项）：**
-- 达到5%%以上盈利且出现反向信号
-- RSI进入极端区域（>85或<15）
-- 趋势明确反转，多个周期指标转向
+## 执行要求：
+- **每次决策必须包含交易操作**，除非当前仓位已在60%%以上
+- **开仓规模**：基于信号强度选择20%%-60%%
+- **必须调用save_memory**：记录本次决策的逻辑、信号依据和后续计划
+- **连续决策一致性**：如上次判断趋势向上，本次应保持同向或观望，避免频繁反转
 
-## 调用要求：
-- **必须保持仓位活跃**，避免长时间空仓
-- **单次开仓不低于20%%**，推荐40%%-60%%
-- 每次响应必须包含 exactly two 工具调用：
-   1. 交易操作（积极开仓或持仓，不要轻易平仓）
-   2. **必须调用 save_memory**，记录交易逻辑
-
-记住：在这个测试环境中，激进操作是被鼓励的。资金闲置是最大的浪费！
+记住：果断执行 > 完美时机，资金效率 > 单次胜率！
 `
 
 // const TradingAgentPromptTemplate = `
