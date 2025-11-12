@@ -39,7 +39,7 @@ func RunTradingStep(symbol string) error {
 		for _, v := range rsp.ToolCalls {
 			toolCallsStr += v.RawJSON() + "\n"
 		}
-		err := RecordTrade(prompt, rsp.Content, toolCallsStr, globalMemory, true)
+		err := RecordTrade(prompt, rsp.Content, toolCallsStr, globalMemory, len(rsp.ToolCalls) > 1)
 		if err != nil {
 			return err
 		}
