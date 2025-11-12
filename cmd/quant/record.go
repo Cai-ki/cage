@@ -233,7 +233,7 @@ func formatPerformanceSummary() string {
 			"- Cumulative ROI: %.2f%%\n"+
 			"- Total Trades: %d\n"+
 			"- 上次决策时间: %s\n"+
-			"- 上次决策记忆: %s",
+			"- 上次决策记忆: \n\n%s",
 		record.InitialBalance,
 		record.CurrentBalance,
 		record.CumulativePnL,

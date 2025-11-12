@@ -224,11 +224,11 @@ func (multi *MultiTimeframeIndicator) ToSimpleString() string {
 
 	// 各周期数据
 	for tf, indicator := range multi.Timeframes {
-		buf.WriteString(fmt.Sprintf("[%s周期]\n", tf))
-		buf.WriteString(fmt.Sprintf("  price: %.2f\n", indicator.Price))
+		buf.WriteString(fmt.Sprintf("### %s周期\n", tf))
+		buf.WriteString(fmt.Sprintf("\n- price: %.2f\n", indicator.Price))
 
 		// 分组输出指标
-		buf.WriteString("  趋势指标: ")
+		buf.WriteString("\n- 趋势指标: ")
 		for k, v := range indicator.Indicators {
 			if strings.HasPrefix(k, "ema_") || strings.HasPrefix(k, "ma_") {
 				buf.WriteString(fmt.Sprintf("%s=%.2f ", k, v))
@@ -236,7 +236,7 @@ func (multi *MultiTimeframeIndicator) ToSimpleString() string {
 		}
 		buf.WriteString("\n")
 
-		buf.WriteString("  动量指标: ")
+		buf.WriteString("\n- 动量指标: ")
 		for k, v := range indicator.Indicators {
 			if strings.Contains(k, "rsi") || strings.Contains(k, "macd") || strings.Contains(k, "stoch") {
 				buf.WriteString(fmt.Sprintf("%s=%.2f ", k, v))
@@ -244,7 +244,7 @@ func (multi *MultiTimeframeIndicator) ToSimpleString() string {
 		}
 		buf.WriteString("\n")
 
-		buf.WriteString("  波动指标: ")
+		buf.WriteString("\n- 波动指标: ")
 		for k, v := range indicator.Indicators {
 			if strings.Contains(k, "atr") || strings.Contains(k, "bb_") {
 				buf.WriteString(fmt.Sprintf("%s=%.2f ", k, v))
