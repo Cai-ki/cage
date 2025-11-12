@@ -438,13 +438,18 @@ func (multi *MultiTimeframeIndicator) ToJSON() string {
 	return string(jsonData)
 }
 
+func Format(t time.Time) string {
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	return t.In(loc).Format("2006-01-02 15:04:05")
+}
+
 // 输出清晰格式（推荐）
 func (multi *MultiTimeframeIndicator) ToSimpleString() string {
 	var buf strings.Builder
 
 	// 头部信息
 	buf.WriteString(fmt.Sprintf("symbol: %s\n", multi.Symbol))
-	buf.WriteString(fmt.Sprintf("timestamp: %s\n", multi.Timestamp.Format("2006-01-02 15:04:05")))
+	buf.WriteString(fmt.Sprintf("timestamp: %s\n", Format(multi.Timestamp)))
 	buf.WriteString("---\n")
 
 	// 各周期数据

@@ -207,15 +207,19 @@ CURRENT CONTEXT:
 - Total trades: %d
 
 STRATEGY PERFORMANCE:
+
 %s
 
 当前持仓状态:
+
 %s
 
 当前市场:
+
 %s
 
 资金费用以及手续费说明:
+
 %s
 
 ## 你的职责：
