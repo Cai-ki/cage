@@ -199,21 +199,21 @@ func getTradingContext(symbol string) (timeStr, sym, price, usdtBal, positionInf
 		mappedMarginType := marginTypeMap[position.MarginType]       // "cross" -> "全仓"
 
 		positionInfo = fmt.Sprintf(
-			"持仓状态: %s %s %s (%s 模式)\n"+
-				"开仓均价: %s USDT\n"+
-				"标记价格: %s USDT\n"+
-				"未实现盈亏: %.2f USDT (%.2f%%)\n"+ // 改为%.2f格式，更整洁
-				"杠杆倍数: %.0f倍\n"+
-				"持仓方向: %s (实际: %s)\n"+
-				"强平价格: %s USDT\n"+
-				"保证金模式: %s\n"+
-				"名义价值: %s USDT\n"+
-				"风险与仓位\n"+
-				"占用保证金: %.2f USDT\n"+
-				"总资金: %.2f USDT\n"+
-				"仓位占比: %.1f%%\n"+
-				"距离强平: %.1f%%\n"+
-				"风险等级: %s",
+			"- 持仓状态: %s %s %s (%s 模式)\n"+
+				"- 开仓均价: %s USDT\n"+
+				"- 标记价格: %s USDT\n"+
+				"- 未实现盈亏: %.2f USDT (%.2f%%)\n"+ // 改为%.2f格式，更整洁
+				"- 杠杆倍数: %.0f倍\n"+
+				"- 持仓方向: %s (实际: %s)\n"+
+				"- 强平价格: %s USDT\n"+
+				"- 保证金模式: %s\n"+
+				"- 名义价值: %s USDT\n"+
+				"- 风险与仓位\n"+
+				"- 占用保证金: %.2f USDT\n"+
+				"- 总资金: %.2f USDT\n"+
+				"- 仓位占比: %.1f%%\n"+
+				"- 距离强平: %.1f%%\n"+
+				"- 风险等级: %s",
 			actualDirection, position.PositionAmt, position.Symbol, mappedPositionSide,
 			position.EntryPrice, position.MarkPrice, unrealizedProfit, pnlPercent, // 使用解析后的变量
 			leverage, mappedPositionSide, actualDirection,
