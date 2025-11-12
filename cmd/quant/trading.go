@@ -357,20 +357,43 @@ const TradingAgentPromptTemplate = `
 - RSI进入极端区域(>90或<10) + 成交量异常
 - 多周期趋势同步反转 + 关键支撑阻力突破
 
-## 执行要求（严格强制）：
+## 调用要求（严格执行）：
+
+**函数调用规则**：
+- 你**必须且仅能**通过函数调用来执行操作
+- **每次响应必须包含 exactly two 工具调用**：
+  1. 一个交易类操作（futures_buy_market / futures_sell_market / futures_close_position）
+  2. **必须调用 save_memory(memory)**，传入完整分析与记忆
+
 **交易操作要求**：
 - 每次决策必须包含交易操作，除非仓位已在60%%以上
 - 开仓规模基于信号强度选择20%%-60%%
 - 连续决策保持一致性，避免频繁反转
 
-**记忆保存要求（必须执行）**：
-- **每次响应必须调用 save_memory 函数**
-- **不调用 save_memory 将导致系统无法学习优化**
+**记忆保存要求（零容忍）**：
+- **必须调用 save_memory**，否则系统无法学习优化
 - **记忆内容必须包含**：
   1. 本次决策的技术分析依据
   2. 仓位管理逻辑和风险评估
-  3. 后续价格预期和操作计划
+  3. 后续价格预期和具体操作计划
   4. 对上次决策的反思（如有）
+
+## 具体调用场景：
+
+**需要交易时**：
+1. futures_buy_market / futures_sell_market / futures_close_position
+2. save_memory (必须)
+
+**无需交易时**（仅当仓位>60%%）：
+1. 跳过交易操作
+2. save_memory (必须)
+
+**禁止行为**：
+- 只调用交易操作不调用save_memory
+- 不调用任何函数
+- 记忆内容空泛（如仅"看好上涨"）
+
+> 注意：如果你认为无需交易，请**仅调用 save_memory**。如果你需要交易，请**同时调用交易函数和 save_memory**。
 `
 
 // const TradingAgentPromptTemplate = `
