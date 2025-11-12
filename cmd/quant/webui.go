@@ -346,14 +346,6 @@ const htmlTemplate = `
                     <canvas id="balanceChart"></canvas>
                 </div>
                 <div class="chart-wrapper">
-                    <canvas id="pnlChart"></canvas>
-                </div>
-            </div>
-            <div class="chart-row">
-                <div class="chart-wrapper">
-                    <canvas id="roiChart"></canvas>
-                </div>
-                <div class="chart-wrapper">
                     <canvas id="priceChart"></canvas>
                 </div>
             </div>
@@ -393,16 +385,16 @@ const htmlTemplate = `
                         <div class="detail-value">{{printf "%.2f" $record.CurrentPrice}} USDT</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-label">Prompt</div>
-                        <div class="detail-value markdown-content" id="prompt-{{$index}}">{{$record.Prompt}}</div>
-                    </div>
-                    <div class="detail-item">
                         <div class="detail-label">Decision</div>
                         <div class="detail-value markdown-content" id="decision-{{$index}}">{{$record.Decision}}</div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">Tool Calls</div>
                         <div class="detail-value">{{$record.ToolCalls}}</div>
+                    </div>                    
+                    <div class="detail-item">
+                        <div class="detail-label">Prompt</div>
+                        <div class="detail-value markdown-content" id="prompt-{{$index}}">{{$record.Prompt}}</div>
                     </div>
                 </div>
             </div>
@@ -415,6 +407,14 @@ const htmlTemplate = `
     </div>
 
     <script>
+            // <div class="chart-row">
+            //     <div class="chart-wrapper">
+            //         <canvas id="roiChart"></canvas>
+            //     </div>
+            //     <div class="chart-wrapper">
+            //         <canvas id="pnlChart"></canvas>
+            //     </div>
+            // </div>
         // 获取历史数据并绘制图表
         async function loadChartData() {
             try {
@@ -458,57 +458,57 @@ const htmlTemplate = `
                     }
                 });
 
-                // 创建盈亏图表
-                const pnlCtx = document.getElementById('pnlChart').getContext('2d');
-                new Chart(pnlCtx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: '累计盈亏 (USDT)',
-                            data: pnlData,
-                            borderColor: 'rgb(255, 99, 132)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                            tension: 0.1,
-                            fill: false
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: false
-                            }
-                        }
-                    }
-                });
+                // // 创建盈亏图表
+                // const pnlCtx = document.getElementById('pnlChart').getContext('2d');
+                // new Chart(pnlCtx, {
+                //     type: 'line',
+                //     data: {
+                //         labels: labels,
+                //         datasets: [{
+                //             label: '累计盈亏 (USDT)',
+                //             data: pnlData,
+                //             borderColor: 'rgb(255, 99, 132)',
+                //             backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                //             tension: 0.1,
+                //             fill: false
+                //         }]
+                //     },
+                //     options: {
+                //         responsive: true,
+                //         maintainAspectRatio: false,
+                //         scales: {
+                //             y: {
+                //                 beginAtZero: false
+                //             }
+                //         }
+                //     }
+                // });
 
-                // 创建收益率图表
-                const roiCtx = document.getElementById('roiChart').getContext('2d');
-                new Chart(roiCtx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: '累计收益率 (%)',
-                            data: roiData,
-                            borderColor: 'rgb(54, 162, 235)',
-                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                            tension: 0.1,
-                            fill: false
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: false
-                            }
-                        }
-                    }
-                });
+                // // 创建收益率图表
+                // const roiCtx = document.getElementById('roiChart').getContext('2d');
+                // new Chart(roiCtx, {
+                //     type: 'line',
+                //     data: {
+                //         labels: labels,
+                //         datasets: [{
+                //             label: '累计收益率 (%)',
+                //             data: roiData,
+                //             borderColor: 'rgb(54, 162, 235)',
+                //             backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                //             tension: 0.1,
+                //             fill: false
+                //         }]
+                //     },
+                //     options: {
+                //         responsive: true,
+                //         maintainAspectRatio: false,
+                //         scales: {
+                //             y: {
+                //                 beginAtZero: false
+                //             }
+                //         }
+                //     }
+                // });
 
                 // 创建价格图表
                 const priceCtx = document.getElementById('priceChart').getContext('2d');

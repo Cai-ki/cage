@@ -142,24 +142,26 @@ func getTradingContext(symbol string) (timeStr, sym, price, usdtBal, positionInf
 		// 		"- 名义价值: %s USDT",
 		// 	actualDirection, position.PositionAmt, position.Symbol, position.PositionSide, position.EntryPrice, position.MarkPrice, position.UnRealizedProfit, pnlPercentage, position.Leverage, position.PositionSide, actualDirection, position.LiquidationPrice, position.MarginType, position.Notional)
 
-		// 计算这些新指标
+		// 计算指标
+		// 计算指标
 		notional, _ := strconv.ParseFloat(position.Notional, 64)
 		leverage, _ := strconv.ParseFloat(position.Leverage, 64)
 		markPrice, _ := strconv.ParseFloat(position.MarkPrice, 64)
 		liquidationPrice, _ := strconv.ParseFloat(position.LiquidationPrice, 64)
 		unrealizedProfit, _ := strconv.ParseFloat(position.UnRealizedProfit, 64)
+		pnlPercent, _ := strconv.ParseFloat(pnlPercentage, 64)
 
 		// 占用保证金（正确）
 		marginUsed := notional / leverage
 
-		// 总权益 = USDT余额 + 持仓价值 + 未实现盈亏（修正）
+		// 总资金 = USDT余额（修正这里！）
 		usdtBalance, _ := strconv.ParseFloat(usdtBal, 64)
-		totalEquity := usdtBalance + notional + unrealizedProfit
+		// totalEquity := usdtBalance + notional + unrealizedProfit  // ❌ 错误的
 
-		// 仓位占比（正确）
-		positionRatio := (marginUsed / totalEquity) * 100
+		// 仓位占比（修正）
+		positionRatio := (marginUsed / usdtBalance) * 100 // ✅ 用总资金，不是总权益
 
-		// 距离强平百分比（修正）
+		// 距离强平百分比（保持原样，这个计算正确）
 		liquidationDistance := 0.0
 		if actualDirection == "多头" {
 			liquidationDistance = ((markPrice - liquidationPrice) / markPrice) * 100
@@ -169,12 +171,12 @@ func getTradingContext(symbol string) (timeStr, sym, price, usdtBal, positionInf
 			liquidationDistance = 100.0 // 无持仓
 		}
 
-		// 风险等级（修正-针对20倍杠杆）
+		// 风险等级（保持原样）
 		riskLevel := "低风险"
 		if liquidationDistance < 5 {
-			riskLevel = "🔥极高风险"
+			riskLevel = "极高风险"
 		} else if liquidationDistance < 10 {
-			riskLevel = "⚠️高风险"
+			riskLevel = "高风险"
 		} else if liquidationDistance < 15 {
 			riskLevel = "中等风险"
 		}
@@ -192,28 +194,31 @@ func getTradingContext(symbol string) (timeStr, sym, price, usdtBal, positionInf
 			"isolated": "逐仓",
 		}
 
+		// 在使用前先进行映射转换
+		mappedPositionSide := positionSideMap[position.PositionSide] // "LONG" -> "多头"
+		mappedMarginType := marginTypeMap[position.MarginType]       // "cross" -> "全仓"
+
 		positionInfo = fmt.Sprintf(
-			"- 持仓状态: %s %s %s (%s 模式)\n"+
-				"- 开仓均价: %s USDT\n"+
-				"- 标记价格: %s USDT\n"+
-				"- 未实现盈亏: %s USDT (%s%%)\n"+
-				"- 杠杆倍数: %s倍\n"+
-				"- 持仓方向: %s (实际: %s)\n"+
-				"- 强平价格: %s USDT\n"+
-				"- 保证金模式: %s\n"+
-				"- 名义价值: %s USDT\n"+
-				"### 风险与仓位\n"+
-				"- 占用保证金: %.2f USDT\n"+
-				"- 总权益: %.2f USDT\n"+
-				"- 仓位占比: %.1f%%\n"+
-				"- 距离强平: %.1f%%\n"+
-				"- 风险等级: %s",
-			actualDirection, position.PositionAmt, position.Symbol,
-			positionSideMap[position.PositionSide],
-			position.EntryPrice, position.MarkPrice, position.UnRealizedProfit, pnlPercentage,
-			position.Leverage, positionSideMap[position.PositionSide], actualDirection,
-			position.LiquidationPrice, marginTypeMap[position.MarginType], position.Notional,
-			marginUsed, totalEquity, positionRatio, liquidationDistance, riskLevel)
+			"持仓状态: %s %s %s (%s 模式)\n"+
+				"开仓均价: %s USDT\n"+
+				"标记价格: %s USDT\n"+
+				"未实现盈亏: %.2f USDT (%.2f%%)\n"+ // 改为%.2f格式，更整洁
+				"杠杆倍数: %.0f倍\n"+
+				"持仓方向: %s (实际: %s)\n"+
+				"强平价格: %s USDT\n"+
+				"保证金模式: %s\n"+
+				"名义价值: %s USDT\n"+
+				"风险与仓位\n"+
+				"占用保证金: %.2f USDT\n"+
+				"总资金: %.2f USDT\n"+
+				"仓位占比: %.1f%%\n"+
+				"距离强平: %.1f%%\n"+
+				"风险等级: %s",
+			actualDirection, position.PositionAmt, position.Symbol, mappedPositionSide,
+			position.EntryPrice, position.MarkPrice, unrealizedProfit, pnlPercent, // 使用解析后的变量
+			leverage, mappedPositionSide, actualDirection,
+			position.LiquidationPrice, mappedMarginType, position.Notional,
+			marginUsed, usdtBalance, positionRatio, liquidationDistance, riskLevel)
 	}
 
 	// // 平衡的中频配置 - 推荐使用
@@ -352,13 +357,20 @@ const TradingAgentPromptTemplate = `
 - RSI进入极端区域(>90或<10) + 成交量异常
 - 多周期趋势同步反转 + 关键支撑阻力突破
 
-## 执行要求：
-- **每次决策必须包含交易操作**，除非当前仓位已在60%%以上
-- **开仓规模**：基于信号强度选择20%%-60%%
-- **必须调用save_memory**：记录本次决策的逻辑、信号依据和后续计划
-- **连续决策一致性**：如上次判断趋势向上，本次应保持同向或观望，避免频繁反转
+## 执行要求（严格强制）：
+**交易操作要求**：
+- 每次决策必须包含交易操作，除非仓位已在60%%以上
+- 开仓规模基于信号强度选择20%%-60%%
+- 连续决策保持一致性，避免频繁反转
 
-记住：果断执行 > 完美时机，资金效率 > 单次胜率！
+**记忆保存要求（必须执行）**：
+- **每次响应必须调用 save_memory 函数**
+- **不调用 save_memory 将导致系统无法学习优化**
+- **记忆内容必须包含**：
+  1. 本次决策的技术分析依据
+  2. 仓位管理逻辑和风险评估
+  3. 后续价格预期和操作计划
+  4. 对上次决策的反思（如有）
 `
 
 // const TradingAgentPromptTemplate = `
