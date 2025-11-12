@@ -145,21 +145,37 @@ func getTradingContext(symbol string) (timeStr, sym, price, usdtBal, positionInf
 			position.LiquidationPrice, position.MarginType, position.Notional) // 12-14
 	}
 
-	// 平衡的中频配置 - 推荐使用
+	// // 平衡的中频配置 - 推荐使用
+	// config := &quant.IndicatorConfig{
+	// 	EMAs:       []int{12, 26, 50}, // 短中结合
+	// 	MAs:        []int{20, 60},     // 实用周期
+	// 	RSI:        []int{14},         // 标准RSI
+	// 	MACD:       true,
+	// 	Stochastic: []int{14, 3}, // 标准随机
+	// 	ATR:        []int{14},    // 标准波动率
+	// 	Bollinger:  []int{20, 2}, // 标准布林带
+	// }
+
+	// // K线数量保持你的原配置
+	// k5m, err := quant.FuturesGetKlines(symbol, "5m", 150)
+	// k15m, err := quant.FuturesGetKlines(symbol, "15m", 120)
+	// k1h, err := quant.FuturesGetKlines(symbol, "1h", 100)
+
+	// 激进中高频配置 - 极速响应
 	config := &quant.IndicatorConfig{
-		EMAs:       []int{12, 26, 50}, // 短中结合
-		MAs:        []int{20, 60},     // 实用周期
-		RSI:        []int{14},         // 标准RSI
+		EMAs:       []int{5, 13, 21}, // 超短期EMA
+		MAs:        []int{8, 21},     // 快速移动平均
+		RSI:        []int{6, 14},     // 超快速RSI
 		MACD:       true,
-		Stochastic: []int{14, 3}, // 标准随机
-		ATR:        []int{14},    // 标准波动率
-		Bollinger:  []int{20, 2}, // 标准布林带
+		Stochastic: []int{5, 3},  // 超敏感随机
+		ATR:        []int{7, 14}, // 快速波动率
+		Bollinger:  []int{13, 2}, // 极窄布林带
 	}
 
-	// K线数量保持你的原配置
-	k5m, err := quant.FuturesGetKlines(symbol, "5m", 100)
-	k15m, err := quant.FuturesGetKlines(symbol, "15m", 80)
-	k1h, err := quant.FuturesGetKlines(symbol, "1h", 50)
+	// K线数据更少，只关注最近变化
+	k5m, err := quant.FuturesGetKlines(symbol, "5m", 50)
+	k15m, err := quant.FuturesGetKlines(symbol, "15m", 40)
+	k1h, err := quant.FuturesGetKlines(symbol, "1h", 30)
 
 	calculator := quant.NewIndicatorCalculator(config)
 
@@ -227,7 +243,7 @@ STRATEGY PERFORMANCE:
 2. 结合**当前持仓状态**（方向、成本、盈亏、杠杆）与交易成本，评估风险敞口
 3. 制定清晰的入场、出场或持仓调整策略
 
-## 可用函数（仅限以下）：
+## 可用函数：
 - **futures_buy_market(symbol, quantity)**  
   -> 开多：当判断价格将上涨且符合策略时使用
 
@@ -246,8 +262,8 @@ STRATEGY PERFORMANCE:
 - 若信号微弱、盈亏比不足或风险过高，请明确说明"暂不交易"并解释原因
 
 ## 行为要求：
-- 必须调用一次 save_memory(memory) 存储记忆便于之后决策参考,记忆建议包含部分此时市场摘要，决策的原因，对整体局势的分析，长远的战略等，以自然段格式展现。
+- 本次决策必须调用一次 save_memory 存储记忆，记忆可以包含此时市场摘要，决策的原因，对整体局势的分析，长远的战略等（根据需要可调整），以自然段格式展现。
 - 如需下单，请直接调用上述函数（不要调用逻辑矛盾）
 - 不要虚构函数或参数，严格遵循接口定义
 
-请基于以上信息，做出专业、审慎且可执行的交易决策。`
+请严格遵守以上要求并基于以上信息，做出专业、审慎且可执行的交易决策。`

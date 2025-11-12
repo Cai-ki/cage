@@ -62,6 +62,7 @@ func (pic *ProfessionalIndicatorCalculator) convertKlinesToPriceData(klines []*f
 }
 
 // 计算单个周期指标
+// 计算单个周期指标
 func (pic *ProfessionalIndicatorCalculator) Calculate(symbol, timeframe string, klines []*futures.Kline) *TechnicalIndicator {
 	if len(klines) == 0 {
 		return nil
@@ -76,8 +77,11 @@ func (pic *ProfessionalIndicatorCalculator) Calculate(symbol, timeframe string, 
 		Indicators: make(map[string]float64),
 	}
 
-	// 计算EMA
+	// 计算EMA - 需要至少period根K线
 	for _, period := range pic.config.EMAs {
+		if len(closes) < period {
+			continue // 跳过，数据不足
+		}
 		key := fmt.Sprintf("ema_%d", period)
 		ema := talib.Ema(closes, period)
 		if len(ema) > 0 {
@@ -85,8 +89,11 @@ func (pic *ProfessionalIndicatorCalculator) Calculate(symbol, timeframe string, 
 		}
 	}
 
-	// 计算MA (SMA)
+	// 计算MA (SMA) - 需要至少period根K线
 	for _, period := range pic.config.MAs {
+		if len(closes) < period {
+			continue // 跳过，数据不足
+		}
 		key := fmt.Sprintf("ma_%d", period)
 		ma := talib.Sma(closes, period)
 		if len(ma) > 0 {
@@ -94,8 +101,11 @@ func (pic *ProfessionalIndicatorCalculator) Calculate(symbol, timeframe string, 
 		}
 	}
 
-	// 计算RSI
+	// 计算RSI - 需要至少period+1根K线
 	for _, period := range pic.config.RSI {
+		if len(closes) < period+1 {
+			continue // 跳过，数据不足
+		}
 		key := fmt.Sprintf("rsi_%d", period)
 		rsi := talib.Rsi(closes, period)
 		if len(rsi) > 0 {
@@ -103,8 +113,8 @@ func (pic *ProfessionalIndicatorCalculator) Calculate(symbol, timeframe string, 
 		}
 	}
 
-	// 计算MACD
-	if pic.config.MACD {
+	// 计算MACD - 需要至少35根K线（26+9）
+	if pic.config.MACD && len(closes) >= 35 {
 		macd, macdSignal, macdHist := talib.Macd(closes, 12, 26, 9)
 		if len(macd) > 0 {
 			indicator.Indicators["macd_dif"] = macd[len(macd)-1]
@@ -113,22 +123,28 @@ func (pic *ProfessionalIndicatorCalculator) Calculate(symbol, timeframe string, 
 		}
 	}
 
-	// 计算随机指标
+	// 计算随机指标 - 需要至少max(周期)+3根K线
 	if len(pic.config.Stochastic) >= 2 {
-		fastK, fastD := talib.Stoch(highs, lows, closes,
-			pic.config.Stochastic[0], // %K周期
-			3,                        // %K平滑周期
-			0,                        // %K移动平均类型 (0=SMA)
-			pic.config.Stochastic[1], // %D周期
-			0)                        // %D移动平均类型 (0=SMA)
-		if len(fastK) > 0 {
-			indicator.Indicators["stoch_k"] = fastK[len(fastK)-1]
-			indicator.Indicators["stoch_d"] = fastD[len(fastD)-1]
+		period := max(pic.config.Stochastic[0], pic.config.Stochastic[1])
+		if len(closes) >= period+3 {
+			fastK, fastD := talib.Stoch(highs, lows, closes,
+				pic.config.Stochastic[0], // %K周期
+				3,                        // %K平滑周期
+				0,                        // %K移动平均类型 (0=SMA)
+				pic.config.Stochastic[1], // %D周期
+				0)                        // %D移动平均类型 (0=SMA)
+			if len(fastK) > 0 {
+				indicator.Indicators["stoch_k"] = fastK[len(fastK)-1]
+				indicator.Indicators["stoch_d"] = fastD[len(fastD)-1]
+			}
 		}
 	}
 
-	// 计算ATR
+	// 计算ATR - 需要至少period+1根K线
 	for _, period := range pic.config.ATR {
+		if len(closes) < period+1 {
+			continue // 跳过，数据不足
+		}
 		key := fmt.Sprintf("atr_%d", period)
 		atr := talib.Atr(highs, lows, closes, period)
 		if len(atr) > 0 {
@@ -136,17 +152,20 @@ func (pic *ProfessionalIndicatorCalculator) Calculate(symbol, timeframe string, 
 		}
 	}
 
-	// 计算布林带
+	// 计算布林带 - 需要至少period根K线
 	if len(pic.config.Bollinger) >= 2 {
-		upper, middle, lower := talib.BBands(closes,
-			pic.config.Bollinger[0],          // 周期
-			float64(pic.config.Bollinger[1]), // 上轨标准差倍数
-			float64(pic.config.Bollinger[1]), // 下轨标准差倍数
-			0)                                // MA类型 (0=SMA)
-		if len(upper) > 0 {
-			indicator.Indicators["bb_upper"] = upper[len(upper)-1]
-			indicator.Indicators["bb_middle"] = middle[len(middle)-1]
-			indicator.Indicators["bb_lower"] = lower[len(lower)-1]
+		period := pic.config.Bollinger[0]
+		if len(closes) >= period {
+			upper, middle, lower := talib.BBands(closes,
+				period,                           // 周期
+				float64(pic.config.Bollinger[1]), // 上轨标准差倍数
+				float64(pic.config.Bollinger[1]), // 下轨标准差倍数
+				0)                                // MA类型 (0=SMA)
+			if len(upper) > 0 {
+				indicator.Indicators["bb_upper"] = upper[len(upper)-1]
+				indicator.Indicators["bb_middle"] = middle[len(middle)-1]
+				indicator.Indicators["bb_lower"] = lower[len(lower)-1]
+			}
 		}
 	}
 
