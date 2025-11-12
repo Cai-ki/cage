@@ -28,7 +28,6 @@ func RunTradingStep(symbol string) error {
 
 	log.Println(rsp.Content)
 	if len(rsp.ToolCalls) > 0 {
-		log.Println(rsp.ToolCalls[0].RawJSON())
 		_, err = mcp.ExecuteToolCalls(rsp)
 		if err != nil {
 			return err
@@ -39,6 +38,8 @@ func RunTradingStep(symbol string) error {
 		for _, v := range rsp.ToolCalls {
 			toolCallsStr += v.RawJSON() + "\n"
 		}
+
+		log.Println(toolCallsStr)
 		err := RecordTrade(prompt, rsp.Content, toolCallsStr, globalMemory, len(rsp.ToolCalls) > 1)
 		if err != nil {
 			return err
@@ -211,9 +212,7 @@ func BuildPrompt(symbol string) string {
 }
 
 const TradingAgentPromptTemplate = `
-[请严格遵守输出要求和调用要求]
-
-%s
+[%s]
 
 你是一个专业的加密货币期货交易员，具备丰富的市场分析和风险管理经验。请根据以下实时上下文信息，制定并执行合理的交易决策。
 
@@ -256,7 +255,7 @@ STRATEGY PERFORMANCE:
   -> 平仓：无论当前持多或持空，自动全部平掉该标的仓位（使用 ReduceOnly 模式)
 
 - **save_memory(memory)**  
-  -> 记忆化：将需要持久化的记忆存储下来，记忆会传入下次调用时的上下文中
+  -> 记忆化：将需要持久化的记忆存储下来，记忆会传入下次调用时的上下文中（必须调用）
 
 ## 输出要求：
 - 先简要总结市场状态、当前持仓风险及手续费影响
@@ -264,11 +263,9 @@ STRATEGY PERFORMANCE:
 - 若信号微弱、盈亏比不足或风险过高，请明确说明"暂不交易"并解释原因
 
 ## 调用要求：
-- 本次决策必须调用一次 save_memory 存储记忆，记忆可以包含此时市场摘要，决策的原因，对整体局势的分析，长远的战略等（根据需要可调整），以自然段格式展现。
+- 无论是否进行交易，你**必须调用一次** save_memory 函数存储记忆，记忆可以包含此时市场摘要，此次决策的原因，对当前整体局势的分析，长远的战略等（根据需要可调整），以自然段格式展现。
 - 如需下单，请直接调用上述函数（不要调用逻辑矛盾）
 - 不要虚构函数或参数，严格遵循接口定义
 
 请基于以上信息，做出专业、审慎且可执行的交易决策。
-
-[请严格遵守输出要求和调用要求]
 `
