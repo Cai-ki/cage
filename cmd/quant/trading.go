@@ -237,7 +237,7 @@ STRATEGY PERFORMANCE:
 - **futures_close_position(symbol)**  
   -> 平仓：无论当前持多或持空，自动全部平掉该标的仓位（使用 ReduceOnly 模式)
 
-- **save_memory(memory)**
+- **save_memory(memory)**  
   -> 记忆化：将需要持久化的记忆存储下来，记忆会传入下次调用时的上下文中
 
 ## 输出要求：
