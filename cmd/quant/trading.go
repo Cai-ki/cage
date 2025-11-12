@@ -34,13 +34,18 @@ func RunTradingStep(symbol string) error {
 			return err
 		}
 		log.Println("Execute tool calls success")
-		err := RecordTrade(prompt, rsp.Content, rsp.ToolCalls[0].RawJSON(), true)
+
+		toolCallsStr := ""
+		for _, v := range rsp.ToolCalls {
+			toolCallsStr += v.RawJSON() + "\n"
+		}
+		err := RecordTrade(prompt, rsp.Content, toolCallsStr, globalMemory, true)
 		if err != nil {
 			return err
 		}
 
 	} else {
-		err := RecordTrade(prompt, rsp.Content, "", false)
+		err := RecordTrade(prompt, rsp.Content, "", globalMemory, false)
 		if err != nil {
 			return err
 		}
@@ -97,8 +102,8 @@ func calculatePnLPercentage(pos *futures.PositionRisk) string {
 	return "0.00"
 }
 
-func getTradingContext(symbol string) (timeStr, sym, price, usdtBal, positionInfo, k5m, k15m, k1h, k4h string) {
-	timeStr = time.Now().Format("2006-01-02 15:04:05")
+func getTradingContext(symbol string) (timeStr, sym, price, usdtBal, positionInfo, multiIndicator, rate string) {
+	timeStr = getTime()
 	sym = symbol
 
 	// 获取当前价格
@@ -140,12 +145,38 @@ func getTradingContext(symbol string) (timeStr, sym, price, usdtBal, positionInf
 			position.LiquidationPrice, position.MarginType, position.Notional) // 12-14
 	}
 
-	// 获取 K 线数据
-	k5m = formatKlines(quant.FuturesGetKlines(symbol, "5m", 12))
-	k15m = formatKlines(quant.FuturesGetKlines(symbol, "15m", 12))
-	k1h = formatKlines(quant.FuturesGetKlines(symbol, "1h", 12))
-	k4h = formatKlines(quant.FuturesGetKlines(symbol, "4h", 6))
+	// 平衡的中频配置 - 推荐使用
+	config := &quant.IndicatorConfig{
+		EMAs:       []int{12, 26, 50}, // 短中结合
+		MAs:        []int{20, 60},     // 实用周期
+		RSI:        []int{14},         // 标准RSI
+		MACD:       true,
+		Stochastic: []int{14, 3}, // 标准随机
+		ATR:        []int{14},    // 标准波动率
+		Bollinger:  []int{20, 2}, // 标准布林带
+	}
 
+	// K线数量保持你的原配置
+	k5m, err := quant.FuturesGetKlines(symbol, "5m", 100)
+	k15m, err := quant.FuturesGetKlines(symbol, "15m", 80)
+	k1h, err := quant.FuturesGetKlines(symbol, "1h", 50)
+
+	calculator := quant.NewIndicatorCalculator(config)
+
+	timeframeData := map[string][]*futures.Kline{
+		"5m":  k5m,
+		"15m": k15m,
+		"1h":  k1h,
+	}
+
+	multiIndicator = calculator.CalculateMultiTimeframe("BTCUSDT", timeframeData).ToSimpleString()
+
+	fundingRate, nextFundingTime, err := quant.FuturesGetCurrentFundingRate(sym)
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	nextFundingTimeStr := time.Unix(nextFundingTime/1000, 0).In(loc).Format("2006-01-02 15:04:05")
+	// 输出：2024-01-16T00:00:00+08:00 （北京时间，比UTC快8小时）
+	makerRate, takerRate, err := quant.FuturesGetFeeRateForSymbol("BTCUSDT")
+	rate = fmt.Sprintf("Fee rates - Maker: %s, Taker: %s\nCurrent Funding Rate: %s\nNext Funding Time: %s\n", makerRate, takerRate, fundingRate, nextFundingTimeStr)
 	return
 }
 
@@ -153,13 +184,14 @@ func BuildPrompt(symbol string) string {
 	tag := "当前位于测试环境，策略允许激进，允许高风险高收益操作。"
 
 	perfSummary := formatPerformanceSummary()
+
 	record := GetPerformanceRecord()
 	totalTrades := record.TotalTrades
 
-	timeStr, sym, price, usdtBal, positionInfo, k5m, k15m, k1h, k4h := getTradingContext(symbol)
+	timeStr, sym, price, usdtBal, positionInfo, multiIndicator, rate := getTradingContext(symbol)
 
 	return fmt.Sprintf(TradingAgentPromptTemplate,
-		tag, timeStr, sym, price, usdtBal, totalTrades, perfSummary, positionInfo, k5m, k15m, k1h, k4h)
+		tag, timeStr, sym, price, usdtBal, totalTrades, perfSummary, positionInfo, multiIndicator, rate)
 }
 
 const TradingAgentPromptTemplate = `
@@ -177,49 +209,41 @@ CURRENT CONTEXT:
 STRATEGY PERFORMANCE:
 %s
 
-POSITION INFO:
+当前持仓状态:
 %s
 
-MARKET DATA FORMAT: Each line = Open:High:Low:Close:Volume
-Focus on Close price trend and Volume changes.
-
-[5m — last 12 candles]
+当前市场:
 %s
 
-[15m — last 12 candles]
+资金费用以及手续费说明:
 %s
-
-[1h — last 12 candles]
-%s
-
-[4h — last 6 candles]
-%s
-
-## 资金费用说明（至关重要！）
-- 每 8 小时结算一次资金费用（北京时间 08:00/16:00/24:00）
-- 当前持仓方向可能需支付/收取资金费，请评估持仓成本
 
 ## 你的职责：
 1. 分析多时间框架下的价格趋势、动量与成交量变化
 2. 结合**当前持仓状态**（方向、成本、盈亏、杠杆）与交易成本，评估风险敞口
 3. 制定清晰的入场、出场或持仓调整策略
-4. **特别注意：避免与现有持仓冲突的操作（如已有 LONG，再开 LONG 会增加风险）**
 
-## 可用交易工具（仅限以下三个函数）：
+## 可用函数（仅限以下）：
 - **futures_buy_market(symbol, quantity)**  
-  -> 开多：当判断价格将上涨且符合策略时使用（Taker，手续费 0.04%%）
+  -> 开多：当判断价格将上涨且符合策略时使用
 
 - **futures_sell_market(symbol, quantity)**  
-  -> 开空或主动平多：当判断价格将下跌，或需减仓多头时使用（Taker，手续费 0.04%%）
+  -> 开空或主动平多：当判断价格将下跌，或需减仓多头时使用
 
 - **futures_close_position(symbol)**  
-  -> 平仓：无论当前持多或持空，自动全部平掉该标的仓位（使用 ReduceOnly 模式，手续费 0.04%%）
+  -> 平仓：无论当前持多或持空，自动全部平掉该标的仓位（使用 ReduceOnly 模式)
+
+- **save_memory(memory)**
+  -> 记忆化：将需要持久化的记忆存储下来，记忆会传入下次调用时的上下文中
 
 ## 输出要求：
 - 先简要总结市场状态、当前持仓风险及手续费影响
 - 明确说明交易意图（开多 / 开空 / 平仓 / 暂不交易）
-- 如需下单，请直接调用上述函数（仅调用一次）
-- 不要虚构函数或参数，严格遵循接口定义
 - 若信号微弱、盈亏比不足或风险过高，请明确说明"暂不交易"并解释原因
+
+## 行为要求：
+- 必须调用一次 save_memory(memory) 存储记忆便于之后决策参考,记忆建议包含部分此时市场摘要，决策的原因，对整体局势的分析，长远的战略等，以自然段格式展现。
+- 如需下单，请直接调用上述函数（不要调用逻辑矛盾）
+- 不要虚构函数或参数，严格遵循接口定义
 
 请基于以上信息，做出专业、审慎且可执行的交易决策。`

@@ -11,6 +11,8 @@ import (
 //go:embed mcp.json
 var mcpString string
 
+var globalMemory string
+
 func init() {
 	type futures_buy_market_args struct {
 		Symbol   string  `json:"symbol"`
@@ -43,4 +45,13 @@ func init() {
 		return map[string]interface{}{"result": string(resultBytes)}, err
 	}
 	mcp.RegisterTool("futures_close_position", futures_close_position, futures_close_position_args{})
+
+	type save_memory_args struct {
+		Memory string `json:"memory"`
+	}
+	save_memory := func(args save_memory_args) (interface{}, error) {
+		globalMemory = args.Memory
+		return map[string]interface{}{"result": args.Memory}, nil
+	}
+	mcp.RegisterTool("save_memory", save_memory, save_memory_args{})
 }

@@ -32,6 +32,8 @@ type PerformanceRecord struct {
 	Prompt    string `json:"prompt"`
 	Decision  string `json:"decision"`
 	ToolCalls string `json:"tool_calls"`
+
+	Memory string `json:"memory"`
 }
 
 func LoadOrCreatePerformanceRecord() ([]PerformanceRecord, error) {
@@ -55,9 +57,8 @@ func LoadOrCreatePerformanceRecord() ([]PerformanceRecord, error) {
 
 	price, _ := quant.FuturesGetTickerPrice("BTCUSDT")
 	currentPrice := sugar.Must(sugar.StrToT[float64](price))
-
 	firstRecord := PerformanceRecord{
-		Date:           time.Now().Format("2006-01-02 15:04:05"),
+		Date:           getTime(),
 		InitialBalance: initialEquity,
 		CurrentBalance: initialEquity,
 		CumulativePnL:  0.0,
@@ -67,6 +68,7 @@ func LoadOrCreatePerformanceRecord() ([]PerformanceRecord, error) {
 		Prompt:         "",
 		Decision:       "",
 		ToolCalls:      "",
+		Memory:         "无往期记忆",
 	}
 
 	records = []PerformanceRecord{firstRecord}
@@ -76,7 +78,7 @@ func LoadOrCreatePerformanceRecord() ([]PerformanceRecord, error) {
 }
 
 // 记录交易并增加总交易次数
-func RecordTrade(prompt, decision, toolcalls string, add bool) error {
+func RecordTrade(prompt, decision, toolcalls, memory string, add bool) error {
 	recordMutex.Lock()
 	defer recordMutex.Unlock()
 
@@ -100,9 +102,8 @@ func RecordTrade(prompt, decision, toolcalls string, add bool) error {
 		}
 		price, _ := quant.FuturesGetTickerPrice("BTCUSDT")
 		currentPrice := sugar.Must(sugar.StrToT[float64](price))
-
 		lastRecord = PerformanceRecord{
-			Date:           time.Now().Format("2006-01-02 15:04:05"),
+			Date:           getTime(),
 			InitialBalance: initialEquity,
 			CurrentBalance: initialEquity,
 			CumulativePnL:  0.0,
@@ -112,13 +113,14 @@ func RecordTrade(prompt, decision, toolcalls string, add bool) error {
 			Prompt:         "",
 			Decision:       "",
 			ToolCalls:      "",
+			Memory:         "无往期记忆",
 		}
 		records = []PerformanceRecord{lastRecord}
 	}
 
 	// 创建新记录，基于最新记录
 	newRecord := lastRecord // 复制最新记录
-	newRecord.Date = time.Now().Format("2006-01-02 15:04:05")
+	newRecord.Date = getTime()
 
 	// 增加总交易次数
 	if add {
@@ -140,6 +142,7 @@ func RecordTrade(prompt, decision, toolcalls string, add bool) error {
 	newRecord.Prompt = prompt
 	newRecord.Decision = decision
 	newRecord.ToolCalls = toolcalls
+	newRecord.Memory = memory
 
 	// 添加新记录到数组
 	records = append(records, newRecord)
@@ -223,16 +226,25 @@ func formatPerformanceSummary() string {
 	}
 
 	return fmt.Sprintf(
-		"Strategy Performance (latest record):\n"+
+		"策略表现（截止到上次决策）:\n"+
 			"- Initial Capital: %.2f USDT\n"+
 			"- Current Balance: %.2f USDT\n"+
 			"- Cumulative PnL: %.2f USDT\n"+
 			"- Cumulative ROI: %.2f%%\n"+
-			"- Total Trades: %d",
+			"- Total Trades: %d\n"+
+			"- 上次决策时间: %s\n"+
+			"- 上次决策记忆: %s",
 		record.InitialBalance,
 		record.CurrentBalance,
 		record.CumulativePnL,
 		record.CumulativeROI,
 		record.TotalTrades,
+		record.Date,
+		record.Memory,
 	)
+}
+
+func getTime() string {
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	return time.Now().In(loc).Format("2006-01-02 15:04:05")
 }

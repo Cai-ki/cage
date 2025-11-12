@@ -67,5 +67,24 @@
                 ]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "save_memory",
+            "description": "记忆化：将此次决策的原因，对整体局势的分析，长远的战略等需要持久化的记忆存储下来，记忆会传入下次调用时的上下文中",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "memory": {
+                        "type": "string",
+                        "description": "需要持久化的记忆文本"
+                    }
+                },
+                "required": [
+                    "memory"
+                ]
+            }
+        }
     }
 ]
