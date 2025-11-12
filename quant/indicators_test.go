@@ -1,38 +1,16 @@
-package quant
+package quant_test
 
 import (
 	"fmt"
 	"testing"
 
+	"github.com/Cai-ki/cage/quant"
 	futures "github.com/adshao/go-binance/v2/futures"
 )
 
-// 模拟K线数据生成
-func generateMockKlines(count int, basePrice float64) []*futures.Kline {
-	var klines []*futures.Kline
-	price := basePrice
-
-	for i := 0; i < count; i++ {
-		// 模拟价格波动
-		change := (float64(i%10) - 5) * 10 // -50 到 +50 的波动
-		price += change
-
-		kline := &futures.Kline{
-			Open:   fmt.Sprint(price - 5),
-			High:   fmt.Sprint(price + 10),
-			Low:    fmt.Sprint(price - 10),
-			Close:  fmt.Sprint(price),
-			Volume: fmt.Sprint(1000 + float64(i)*100),
-		}
-		klines = append(klines, kline)
-	}
-
-	return klines
-}
-
 func TestTechnicalIndicators(t *testing.T) {
 	// 创建配置
-	config := &IndicatorConfig{
+	config := &quant.IndicatorConfig{
 		EMAs:       []int{12, 26},
 		MAs:        []int{20},
 		RSI:        []int{14},
@@ -42,18 +20,18 @@ func TestTechnicalIndicators(t *testing.T) {
 		Bollinger:  []int{20, 2},
 	}
 
-	calculator := NewIndicatorCalculator(config)
+	calculator := quant.NewIndicatorCalculator(config)
 
-	// 生成模拟数据
-	klines5m := generateMockKlines(100, 50000)
-	klines15m := generateMockKlines(80, 50000)
-	klines1h := generateMockKlines(50, 50000)
+	// 生成数据
+	k5m, _ := quant.FuturesGetKlines("BTCUSDT", "5m", 100)
+	k15m, _ := quant.FuturesGetKlines("BTCUSDT", "15m", 80)
+	k1h, _ := quant.FuturesGetKlines("BTCUSDT", "1h", 50)
 
 	// 计算多周期指标
 	timeframeData := map[string][]*futures.Kline{
-		"5m":  klines5m,
-		"15m": klines15m,
-		"1h":  klines1h,
+		"5m":  k5m,
+		"15m": k15m,
+		"1h":  k1h,
 	}
 
 	multiIndicator := calculator.CalculateMultiTimeframe("BTCUSDT", timeframeData)
