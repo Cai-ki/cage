@@ -1,85 +1,131 @@
 # 包功能说明
 
-本包提供了一个面向 AI 友好的加密货币交易所接口封装，目前支持 Binance 现货和合约交易。通过环境变量配置交易所认证信息，包内部自动初始化客户端连接。设计目标是简化量化交易策略的实现，提供统一的函数接口进行行情获取、账户查询和订单操作，适用于自动化交易系统和量化策略研究场景。
+quant 包是一个专为量化交易和自动化策略设计的加密货币交易所接口库，提供对 Binance 现货和合约交易的简化访问。该包封装了复杂的交易所 API 调用，提供统一的函数接口，支持市场数据获取、账户管理、订单执行等核心交易功能。通过环境变量配置 API 密钥和网络设置，开发者可以快速集成现货和合约交易能力到自己的交易系统中，特别适合用于算法交易、套利策略和风险管理等场景。
 
 ## 结构体与接口
 
-本包未定义公开的结构体与接口，所有功能通过函数提供。
+```go
+type CommissionRateResponse struct {
+    Symbol              string `json:"symbol"`
+    MakerCommissionRate string `json:"makerCommissionRate"`
+    TakerCommissionRate string `json:"takerCommissionRate"`
+}
+```
+
+CommissionRateResponse 结构体用于存储币安合约交易手续费率查询的响应数据。Symbol 字段表示交易对符号，如 "BTCUSDT"；MakerCommissionRate 字段表示挂单手续费率，例如 "0.000200" 表示 0.02%；TakerCommissionRate 字段表示吃单手续费率，例如 "0.000400" 表示 0.04%。
 
 ## 函数
 
 ```go
-func FetchLatestPrice(symbol string) (*binance.SymbolPrice, error)
+func BinanceFuturesRequest(method, endpoint string, params url.Values, result interface{}) error
 ```
 
-获取指定交易对的最新价格信息。参数 symbol 为交易对符号（如 "BTC/USDT"），函数内部会自动标准化格式。返回包含最新价格信息的 SymbolPrice 结构体指针，如果获取失败或交易对不存在则返回错误。
-
-```go
-func FetchHistoricalPrices(symbol, interval string, limit int) ([]*binance.Kline, error)
-```
-
-获取指定交易对的历史 K 线数据。参数 symbol 为交易对符号，interval 为 K 线间隔（如 "1m", "1h"），limit 为获取的数据条数。返回 K 线数据切片，包含开盘价、最高价、最低价、收盘价等信息。
+BinanceFuturesRequest 函数执行通用的币安合约 API 请求，支持 GET、POST 等 HTTP 方法。method 参数指定 HTTP 请求方法，endpoint 参数指定 API 端点路径，params 参数包含请求参数，result 参数用于存储解析后的响应数据。函数会自动添加时间戳和签名，处理认证头信息，并返回请求执行结果。
 
 ```go
 func BuyMarket(symbol string, quoteAmount float64) (*binance.CreateOrderResponse, error)
 ```
 
-使用市价单买入交易对，以计价货币（如 USDT）数量作为下单金额。参数 symbol 为交易对符号，quoteAmount 为计价货币数量。返回订单创建响应，包含订单 ID、状态等信息。需要正确设置 EXCHANGE_SPOT_API_KEY 和 EXCHANGE_SPOT_API_SECRET 环境变量。
+BuyMarket 函数在现货市场使用市价单买入指定交易对。symbol 参数指定交易对符号，quoteAmount 参数指定计价货币的数量。函数返回订单创建结果，包含订单ID、状态等信息。
 
 ```go
-func SellMarket(symbol string, baseAmount float64) (*binance.CreateOrderResponse, error)
+func CreateSignature(queryString, secretKey string) string
 ```
 
-使用市价单卖出交易对，以基础货币数量作为下单数量。参数 symbol 为交易对符号，baseAmount 为基础货币数量。返回订单创建响应。需要正确设置交易所 API 密钥环境变量。
+CreateSignature 函数使用 HMAC SHA256 算法创建请求签名。queryString 参数是需要签名的查询参数字符串，secretKey 参数是 API 密钥。函数返回十六进制格式的签名字符串，用于 API 请求的身份验证。
 
 ```go
-func GetAccountBalance(currency string) (string, error)
+func CreateSignatureFromParams(params url.Values, secretKey string) (signature, queryString string)
 ```
 
-查询指定币种的可用余额。参数 currency 为币种符号（如 "BTC", "USDT"）。返回该币种的可用余额字符串，如果币种不存在则返回 "0"。需要正确设置交易所 API 密钥环境变量。
+CreateSignatureFromParams 函数从 url.Values 参数创建签名。params 参数包含请求参数，secretKey 参数是 API 密钥。函数返回签名和编码后的查询字符串，便于构建完整的 API 请求。
 
 ```go
-func ListOpenOrders(symbol string) ([]*binance.Order, error)
+func FetchHistoricalPrices(symbol, interval string, limit int) ([]*binance.Kline, error)
 ```
 
-列出指定交易对的所有未成交订单。参数 symbol 为交易对符号。返回订单信息切片，包含每个订单的详细信息。需要正确设置交易所 API 密钥环境变量。
+FetchHistoricalPrices 函数获取现货市场的历史K线数据。symbol 参数指定交易对符号，interval 参数指定K线时间间隔，limit 参数指定返回的数据条数。函数返回K线数据数组，包含开盘价、最高价、最低价、收盘价等信息。
 
 ```go
-func FuturesGetBalance(asset string) (string, error)
+func FetchLatestPrice(symbol string) (*binance.SymbolPrice, error)
 ```
 
-获取 USDT 保证金合约账户的余额。参数 asset 为资产符号（如 "USDT"）。返回该资产的钱包余额字符串。需要正确设置 EXCHANGE_FUTURES_API_KEY 和 EXCHANGE_FUTURES_API_SECRET 环境变量。
-
-```go
-func FuturesGetPosition(symbol string) (*futures.PositionRisk, error)
-```
-
-获取指定交易对的持仓风险信息。参数 symbol 为交易对符号。返回包含持仓数量、杠杆、未实现盈亏等信息的 PositionRisk 结构体指针。如果该交易对没有持仓则返回错误。
+FetchLatestPrice 函数获取现货市场指定交易对的最新价格。symbol 参数指定交易对符号。函数返回包含最新价格信息的 SymbolPrice 结构体。
 
 ```go
 func FuturesBuyMarket(symbol string, quantity float64) (*futures.CreateOrderResponse, error)
 ```
 
-使用市价单开立多头仓位。参数 symbol 为交易对符号，quantity 为下单数量。返回合约订单创建响应。需要正确设置合约交易 API 密钥环境变量。
-
-```go
-func FuturesSellMarket(symbol string, quantity float64) (*futures.CreateOrderResponse, error)
-```
-
-使用市价单开立空头仓位或平仓多头仓位。参数 symbol 为交易对符号，quantity 为下单数量。返回合约订单创建响应。需要正确设置合约交易 API 密钥环境变量。
+FuturesBuyMarket 函数在合约市场使用市价单开多仓。symbol 参数指定交易对符号，quantity 参数指定合约数量。函数返回订单创建结果，用于确认开仓操作是否成功。
 
 ```go
 func FuturesClosePosition(symbol string) (*futures.CreateOrderResponse, error)
 ```
 
-自动检测并平掉指定交易对的所有持仓。参数 symbol 为交易对符号。函数会自动检测持仓方向和数量，并使用减仓单（ReduceOnly）进行平仓操作。返回订单创建响应。
+FuturesClosePosition 函数自动检测并关闭指定交易对的持仓。symbol 参数指定交易对符号。函数会自动判断持仓方向并执行相应的平仓操作，使用 ReduceOnly 标记确保只减少持仓。
+
+```go
+func FuturesGetAccountDefaultFeeRate() (makerFeeRate string, takerFeeRate string, err error)
+```
+
+FuturesGetAccountDefaultFeeRate 函数获取账户的默认交易手续费率。函数返回挂单手续费率和吃单手续费率，通过查询 BTCUSDT 交易对的费率来获取默认值。
+
+```go
+func FuturesGetBalance(asset string) (string, error)
+```
+
+FuturesGetBalance 函数获取 USDT 保证金合约账户的余额。asset 参数指定资产类型，如 "USDT"。函数返回指定资产的钱包余额字符串。
+
+```go
+func FuturesGetCurrentFundingRate(symbol string) (fundingRate string, nextFundingTime int64, err error)
+```
+
+FuturesGetCurrentFundingRate 函数获取指定交易对的当前资金费率。symbol 参数指定交易对符号。函数返回资金费率字符串和下次资金费率更新的时间戳，资金费率如 "0.0001" 表示 0.01%。
+
+```go
+func FuturesGetFeeRateForSymbol(symbol string) (makerFeeRate string, takerFeeRate string, err error)
+```
+
+FuturesGetFeeRateForSymbol 函数获取指定交易对的当前交易手续费率。symbol 参数指定交易对符号。函数返回该交易对的挂单手续费率和吃单手续费率。
 
 ```go
 func FuturesGetKlines(symbol, interval string, limit int) ([]*futures.Kline, error)
 ```
 
-获取合约交易的历史 K 线数据。参数 symbol 为交易对符号，interval 为 K 线间隔，limit 为获取的数据条数。返回合约 K 线数据切片。
+FuturesGetKlines 函数获取合约市场的历史K线数据。symbol 参数指定交易对符号，interval 参数指定K线时间间隔，limit 参数指定返回的数据条数。函数返回合约K线数据数组。
 
-## 变量与常量
+```go
+func FuturesGetPosition(symbol string) (*futures.PositionRisk, error)
+```
 
-本包未定义公开的变量与常量。
+FuturesGetPosition 函数获取指定交易对的持仓信息。symbol 参数指定交易对符号。函数返回 PositionRisk 结构体，包含持仓数量、杠杆、未实现盈亏等详细信息。
+
+```go
+func FuturesGetTickerPrice(symbol string) (string, error)
+```
+
+FuturesGetTickerPrice 函数获取合约市场指定交易对的标记价格。symbol 参数指定交易对符号。函数返回标记价格字符串，用于合约估值和保证金计算。
+
+```go
+func FuturesSellMarket(symbol string, quantity float64) (*futures.CreateOrderResponse, error)
+```
+
+FuturesSellMarket 函数在合约市场使用市价单开空仓或平多仓。symbol 参数指定交易对符号，quantity 参数指定合约数量。函数返回订单创建结果，用于确认交易操作是否成功。
+
+```go
+func GetAccountBalance(currency string) (string, error)
+```
+
+GetAccountBalance 函数获取现货账户指定币种的可用余额。currency 参数指定币种符号，如 "BTC" 或 "USDT"。函数返回该币种的可用余额字符串。
+
+```go
+func ListOpenOrders(symbol string) ([]*binance.Order, error)
+```
+
+ListOpenOrders 函数获取现货市场指定交易对的所有未成交订单。symbol 参数指定交易对符号。函数返回订单数组，包含每个订单的详细信息如订单ID、数量、价格等。
+
+```go
+func SellMarket(symbol string, baseAmount float64) (*binance.CreateOrderResponse, error)
+```
+
+SellMarket 函数在现货市场使用市价单卖出指定交易对。symbol 参数指定交易对符号，baseAmount 参数指定基础货币的数量。函数返回订单创建结果，用于确认卖出操作是否成功。

@@ -340,7 +340,7 @@ const htmlTemplate = `
         </div>
         
         <div class="chart-container">
-            <h3>绩效变化趋势</h3>
+            <h3>变化趋势</h3>
             <div class="chart-row">
                 <div class="chart-wrapper">
                     <canvas id="balanceChart"></canvas>
