@@ -257,13 +257,10 @@ func Format(t time.Time) string {
 // }
 
 // 输出清晰格式（适合AI分析）
-func (multi *MultiTimeframeIndicator) ToSimpleString() string {
+func (multi *MultiTimeframeIndicator) ToSimpleString(timeframeOrder []string) string {
 	var buf strings.Builder
 
 	// buf.WriteString("## 技术指标分析\n\n")
-
-	// 按时间周期顺序输出（从大到小）
-	timeframeOrder := []string{"1h", "15m", "5m"}
 
 	for _, tf := range timeframeOrder {
 		if indicator, exists := multi.Timeframes[tf]; exists {

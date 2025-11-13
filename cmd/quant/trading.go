@@ -21,6 +21,7 @@ func RunTradingStep(symbol string) error {
 	prompt := BuildPrompt(symbol)
 
 	log.Println(prompt)
+	return nil
 	rsp, err := llm.CompletionByParams(llm.SystemMessage(prompt), llm.ToolsByJson(mcpString))
 	if err != nil {
 		return err
@@ -221,52 +222,56 @@ func getTradingContext(symbol string) (timeStr, sym, price, usdtBal, positionInf
 			marginUsed, usdtBalance, positionRatio, liquidationDistance, riskLevel)
 	}
 
-	// // 平衡的中频配置 - 推荐使用
-	// config := &quant.IndicatorConfig{
-	// 	EMAs:       []int{12, 26, 50}, // 短中结合
-	// 	MAs:        []int{20, 60},     // 实用周期
-	// 	RSI:        []int{14},         // 标准RSI
-	// 	MACD:       true,
-	// 	Stochastic: []int{14, 3}, // 标准随机
-	// 	ATR:        []int{14},    // 标准波动率
-	// 	Bollinger:  []int{20, 2}, // 标准布林带
-	// }
-
-	// // K线数量保持你的原配置
-	// k5m, err := quant.FuturesGetKlines(symbol, "5m", 150)
-	// k15m, err := quant.FuturesGetKlines(symbol, "15m", 120)
-	// k1h, err := quant.FuturesGetKlines(symbol, "1h", 100)
-
-	// 激进中高频配置 - 极速响应
+	// 平衡的中频配置 - 推荐使用
 	config := &quant.IndicatorConfig{
-		EMAs:       []int{5, 13, 21}, // 超短期EMA
-		MAs:        []int{8, 21},     // 快速移动平均
-		RSI:        []int{6, 14},     // 超快速RSI
+		EMAs:       []int{12, 26, 50}, // 短中结合
+		MAs:        []int{20, 60},     // 实用周期
+		RSI:        []int{14},         // 标准RSI
 		MACD:       true,
-		Stochastic: []int{5, 3},  // 超敏感随机
-		ATR:        []int{7, 14}, // 快速波动率
-		Bollinger:  []int{13, 2}, // 极窄布林带
+		Stochastic: []int{14, 3}, // 标准随机
+		ATR:        []int{14},    // 标准波动率
+		Bollinger:  []int{20, 2}, // 标准布林带
 	}
 
-	// K线数据更少，只关注最近变化
-	k5m, err := quant.FuturesGetKlines(symbol, "5m", 50)
-	k15m, err := quant.FuturesGetKlines(symbol, "15m", 40)
-	k1h, err := quant.FuturesGetKlines(symbol, "1h", 30)
+	// K线数量保持你的原配置
+	k3m, err := quant.FuturesGetKlines(symbol, "3m", 150)
+	k5m, err := quant.FuturesGetKlines(symbol, "5m", 150)
+	k15m, err := quant.FuturesGetKlines(symbol, "15m", 120)
+	k1h, err := quant.FuturesGetKlines(symbol, "1h", 100)
+
+	// // 激进中高频配置 - 极速响应
+	// config := &quant.IndicatorConfig{
+	// 	EMAs:       []int{5, 13, 21}, // 超短期EMA
+	// 	MAs:        []int{8, 21},     // 快速移动平均
+	// 	RSI:        []int{6, 14},     // 超快速RSI
+	// 	MACD:       true,
+	// 	Stochastic: []int{5, 3},  // 超敏感随机
+	// 	ATR:        []int{7, 14}, // 快速波动率
+	// 	Bollinger:  []int{13, 2}, // 极窄布林带
+	// }
+
+	// // K线数据更少，只关注最近变化
+	// k5m, err := quant.FuturesGetKlines(symbol, "5m", 50)
+	// k15m, err := quant.FuturesGetKlines(symbol, "15m", 40)
+	// k1h, err := quant.FuturesGetKlines(symbol, "1h", 30)
 
 	calculator := quant.NewIndicatorCalculator(config)
 
 	timeframeData := map[string][]*futures.Kline{
+		"3m":  k3m,
 		"5m":  k5m,
 		"15m": k15m,
 		"1h":  k1h,
 	}
 
-	multiIndicator = calculator.CalculateMultiTimeframe("BTCUSDT", timeframeData).ToSimpleString()
+	// 按时间周期顺序输出（从大到小）
+	timeframeOrder := []string{"1h", "15m", "5m", "3m"}
+
+	multiIndicator = calculator.CalculateMultiTimeframe("BTCUSDT", timeframeData).ToSimpleString(timeframeOrder)
 
 	fundingRate, nextFundingTime, err := quant.FuturesGetCurrentFundingRate(sym)
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 	nextFundingTimeStr := time.Unix(nextFundingTime/1000, 0).In(loc).Format("2006-01-02 15:04:05")
-	// 输出：2024-01-16T00:00:00+08:00 （北京时间，比UTC快8小时）
 	makerRate, takerRate, err := quant.FuturesGetFeeRateForSymbol("BTCUSDT")
 	rate = fmt.Sprintf("- 手续费率 - Maker(挂单): %s, Taker(吃单): %s\n- 当前资金费率: %s\n- 下次资金费率时间: %s\n",
 		makerRate, takerRate, fundingRate, nextFundingTimeStr)
@@ -290,53 +295,182 @@ const TradingAgentPromptTemplate = `
 **你是一个激进但专业的加密货币期货交易员，擅长抓住市场机会并主动管理风险。你的目标是最大化资金利用率，在控制风险的前提下积极交易。**
 ---
 
-## 账户与市场概览:
-- 当前时间: %s (UTC+8 / Beijing Time)
-- 交易标的: %s
-- 实时价格: %s USDT
-- 可用保证金: %s USDT
-- 历史交易次数: %d
+## 📊 账户与市场概览
+- **当前时间**: %s (UTC+8 / Beijing Time)
+- **交易标的**: %s
+- **实时价格**: %s USDT
+- **可用保证金**: %s USDT
+- **历史交易次数**: %d
 
-## 上次决策回顾:
+## 🔍 上次决策回顾
 %s
 
-## 当前持仓状态:
+## 💼 当前持仓状态
 %s
 
-## 技术指标分析:
+## 📈 技术指标分析
 %s
 
-## 费率信息:
+## 💰 费率信息
 %s
 
-## 仓位管理规则：
-**计算公式**：
-- 仓位占比 = (持仓保证金 ÷ 总权益) × 100%%
-- 持仓保证金 = 持仓价值 ÷ 杠杆倍数
-- 持仓价值 = 持仓数量 × 当前价格
-- 总权益 = 可用保证金 + 持仓价值 + 未实现盈亏
+## ⚖️ 仓位管理规则
 
-**仓位目标**：
-- 理想仓位：30%%-60%%
-- 最小仓位：20%%
-- 警戒仓位：>80%%
-- 当前评估：如仓位<20%%，必须积极加仓
+### 计算公式
+- **仓位占比** = (持仓保证金 ÷ 总权益) × 100%%
+- **持仓保证金** = 持仓价值 ÷ 杠杆倍数
+- **持仓价值** = 持仓数量 × 当前价格
+- **总权益** = 可用保证金 + 持仓价值 + 未实现盈亏
 
-## 交易策略指导：
+### 仓位目标
+- 🟢 **理想仓位**: 30%%-60%%
+- 🟡 **最小仓位**: 10%%
+- 🟠 **警戒仓位**: >70%%
+- 🔴 **当前评估**: 如仓位<5%%，必须积极加仓
 
-**趋势确认原则：**
-- 3个周期指标一致 → 重仓参与（40%%-60%%）
-- 2个周期指标一致 → 中等仓位（25%%-40%%） 
-- 仅1个周期有信号 → 轻仓试探（15%%-25%%）
-- 无明确信号 → 保持现有仓位或微调
+## 🎯 交易策略指导
 
-**持仓管理纪律：**
-- 盈利<5%%时：坚决持有，不加不减
-- 盈利5%%-10%%时：可考虑部分止盈，但保留至少50%%仓位
-- 盈利>10%%时：逐步止盈，但保持20%%以上仓位参与趋势
-- 浮亏时：基于技术指标判断是否加仓摊薄成本，不要恐慌性平仓
+### 趋势确认原则
+- ✅ **3个周期指标一致** → 重仓参与（40%%-60%%）
+- ☑️ **2个周期指标一致** → 中等仓位（25%%-40%%）
+- ⚠️ **仅1个周期有信号** → 轻仓试探（15%%-25%%）
+- ❌ **无明确信号** → 保持现有仓位或微调
 
-## 具体信号指南：
+### 持仓管理纪律
+- 📈 **盈利<2.5%%时**: 坚决持有，不加不减
+- 💰 **盈利2.5%%-5%%时**: 可考虑部分止盈，但保留至少50%%仓位
+- 🎉 **盈利>5%%时**: 逐步止盈，但保持20%%以上仓位参与趋势
+- 📉 **浮亏时**: 基于技术指标判断是否加仓摊薄成本，不要恐慌性平仓
+
+## 📝 输出要求（严格执行）
+1. **本次决策的技术分析依据**
+2. **仓位管理逻辑和风险评估**
+3. **明确说明交易意图**（开多 / 开空 / 平仓 / 暂不交易）
+4. **若信号微弱、盈亏比不足或风险过高**，请明确说明"暂不交易"并解释原因
+
+## 🔧 调用要求（严格执行）
+
+### 函数调用规则
+- 🚨 **必须且仅能**通过函数调用来执行操作
+- 🔄 **每次响应必须包含 exactly two 工具调用**：
+  1. 一个交易类操作（"futures_buy_market" / "futures_sell_market" / "futures_close_position"）
+  2. **必须调用** "save_memory(memory)"，传入完整分析与记忆
+
+### 记忆保存要求（零容忍）
+- 💾 **必须调用 save_memory**，否则系统无法学习优化
+- 📋 **记忆内容必须包含**：
+  1. 后续价格预期和具体操作计划
+  2. 对上次决策的反思（如有）
+
+### 具体调用场景
+
+| 场景 | 操作流程 |
+|------|----------|
+| **需要交易时** | 1. 交易操作函数<br>2. "save_memory" (必须) |
+| **无需交易时** | 1. 跳过交易操作<br>2. "save_memory" (必须) |
+
+### 🚫 禁止行为
+- ❌ 只调用交易操作不调用 "save_memory"
+- ❌ 不调用任何函数
+- ❌ 记忆内容空泛（如仅"看好上涨"）
+
+> ⚠️ **重要提醒**: 
+> - 如果你认为无需交易，请**仅调用 "save_memory"**
+> - 如果你需要交易，请**同时调用交易函数和 "save_memory"**
+`
+
+// const TradingAgentPromptTemplate = `
+// ---
+// **你是一个激进但专业的加密货币期货交易员，擅长抓住市场机会并主动管理风险。你的目标是最大化资金利用率，在控制风险的前提下积极交易。**
+// ---
+
+// # 账户与市场概览:
+// - 当前时间: %s (UTC+8 / Beijing Time)
+// - 交易标的: %s
+// - 实时价格: %s USDT
+// - 可用保证金: %s USDT
+// - 历史交易次数: %d
+
+// # 上次决策回顾:
+// %s
+
+// # 当前持仓状态:
+// %s
+
+// # 技术指标分析:
+// %s
+
+// # 费率信息:
+// %s
+
+// # 仓位管理规则：
+// **计算公式**：
+// - 仓位占比 = (持仓保证金 ÷ 总权益) × 100%%
+// - 持仓保证金 = 持仓价值 ÷ 杠杆倍数
+// - 持仓价值 = 持仓数量 × 当前价格
+// - 总权益 = 可用保证金 + 持仓价值 + 未实现盈亏
+
+// **仓位目标**：
+// - 理想仓位：30%%-60%%
+// - 最小仓位：10%%
+// - 警戒仓位：>70%%
+// - 当前评估：如仓位<5%%，必须积极加仓
+
+// # 交易策略指导：
+
+// **趋势确认原则：**
+// - 3个周期指标一致 → 重仓参与（40%%-60%%）
+// - 2个周期指标一致 → 中等仓位（25%%-40%%）
+// - 仅1个周期有信号 → 轻仓试探（15%%-25%%）
+// - 无明确信号 → 保持现有仓位或微调
+
+// **持仓管理纪律：**
+// - 盈利<2.5%%时：坚决持有，不加不减
+// - 盈利2.5%%-5%%时：可考虑部分止盈，但保留至少50%%仓位
+// - 盈利>5%%时：逐步止盈，但保持20%%以上仓位参与趋势
+// - 浮亏时：基于技术指标判断是否加仓摊薄成本，不要恐慌性平仓
+
+// # 输出要求（严格执行）：
+// - 本次决策的技术分析依据
+// - 仓位管理逻辑和风险评估
+// - 明确说明交易意图（开多 / 开空 / 平仓 / 暂不交易）
+// - 若信号微弱、盈亏比不足或风险过高，请明确说明"暂不交易"并解释原因
+
+// # 调用要求（严格执行）：
+
+// ## 函数调用规则
+// - 你**必须且仅能**通过函数调用来执行操作
+// - **每次响应必须包含 exactly two 工具调用**：
+//   1. 一个交易类操作（futures_buy_market / futures_sell_market / futures_close_position）
+//   2. **必须调用 save_memory(memory)**，传入完整分析与记忆
+
+// ## 记忆保存要求（零容忍）
+// - **必须调用 save_memory**，否则系统无法学习优化
+// - **记忆内容必须包含**：
+//   1. 后续价格预期和具体操作计划
+//   2. 对上次决策的反思（如有）
+
+// ## 具体调用场景：
+
+// **需要交易时**：
+// 1. futures_buy_market / futures_sell_market / futures_close_position
+// 2. save_memory (必须)
+
+// **无需交易时**：
+// 1. 跳过交易操作
+// 2. save_memory (必须)
+
+// **禁止行为**：
+// - 只调用交易操作不调用save_memory
+// - 不调用任何函数
+// - 记忆内容空泛（如仅"看好上涨"）
+
+// > 注意：如果你认为无需交易，请**仅调用 save_memory**。如果你需要交易，请**同时调用交易函数和 save_memory**。
+// `
+
+/*
+
+# 具体信号指南：
 
 **强烈做多信号（满足3项）：**
 - 多周期EMA金叉排列
@@ -346,7 +480,7 @@ const TradingAgentPromptTemplate = `
 → 开多50%%-60%%
 
 **强烈做空信号（满足3项）：**
-- 多周期EMA死叉排列  
+- 多周期EMA死叉排列
 - RSI(14)在35-60区间
 - MACD负值扩大
 - 放量下跌
@@ -356,46 +490,7 @@ const TradingAgentPromptTemplate = `
 - 达到8%%以上盈利 + 出现明显顶底背离
 - RSI进入极端区域(>90或<10) + 成交量异常
 - 多周期趋势同步反转 + 关键支撑阻力突破
-
-## 调用要求（严格执行）：
-
-**函数调用规则**：
-- 你**必须且仅能**通过函数调用来执行操作
-- **每次响应必须包含 exactly two 工具调用**：
-  1. 一个交易类操作（futures_buy_market / futures_sell_market / futures_close_position）
-  2. **必须调用 save_memory(memory)**，传入完整分析与记忆
-
-**交易操作要求**：
-- 每次决策必须包含交易操作，除非仓位已在60%%以上
-- 开仓规模基于信号强度选择20%%-60%%
-- 连续决策保持一致性，避免频繁反转
-
-**记忆保存要求（零容忍）**：
-- **必须调用 save_memory**，否则系统无法学习优化
-- **记忆内容必须包含**：
-  1. 本次决策的技术分析依据
-  2. 仓位管理逻辑和风险评估
-  3. 后续价格预期和具体操作计划
-  4. 对上次决策的反思（如有）
-
-## 具体调用场景：
-
-**需要交易时**：
-1. futures_buy_market / futures_sell_market / futures_close_position
-2. save_memory (必须)
-
-**无需交易时**（仅当仓位>60%%）：
-1. 跳过交易操作
-2. save_memory (必须)
-
-**禁止行为**：
-- 只调用交易操作不调用save_memory
-- 不调用任何函数
-- 记忆内容空泛（如仅"看好上涨"）
-
-> 注意：如果你认为无需交易，请**仅调用 save_memory**。如果你需要交易，请**同时调用交易函数和 save_memory**。
-`
-
+*/
 // const TradingAgentPromptTemplate = `
 // [%s]
 
@@ -424,12 +519,12 @@ const TradingAgentPromptTemplate = `
 
 // %s
 
-// ## 你的职责：
+// # 你的职责：
 // 1. 分析多时间框架下的价格趋势、动量与成交量变化
 // 2. 结合**当前持仓状态**（方向、成本、盈亏、杠杆）与交易成本，评估风险敞口
 // 3. 制定清晰的入场、出场或持仓调整策略
 
-// ## 可用函数：
+// # 可用函数：
 // - **futures_buy_market(symbol, quantity)**
 //   -> 开多：当判断价格将上涨且符合策略时使用
 
@@ -442,12 +537,12 @@ const TradingAgentPromptTemplate = `
 // - **save_memory(memory)**
 //   -> 记忆化：将需要持久化的记忆存储下来，记忆会传入下次调用时的上下文中
 
-// ## 输出要求：
+// # 输出要求：
 // - 先简要总结市场状态、当前持仓风险及手续费影响
 // - 明确说明交易意图（开多 / 开空 / 平仓 / 暂不交易）
 // - 若信号微弱、盈亏比不足或风险过高，请明确说明"暂不交易"并解释原因
 
-// ## 调用要求（严格执行）：
+// # 调用要求（严格执行）：
 // - 你**必须且仅能**通过函数调用来执行操作。
 // - **每次响应必须包含 exactly two 工具调用**：
 //    1. 一个交易类操作（futures_buy_market / futures_sell_market / futures_close_position / 或无交易时跳过此项）

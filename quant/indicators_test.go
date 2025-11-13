@@ -41,7 +41,8 @@ func TestTechnicalIndicators(t *testing.T) {
 	fmt.Println(multiIndicator.ToJSON())
 
 	fmt.Println("\n=== 简洁格式 ===")
-	fmt.Println(multiIndicator.ToSimpleString())
+	timeframeOrder := []string{"1h", "15m", "5m"}
+	fmt.Println(multiIndicator.ToSimpleString(timeframeOrder))
 
 	// 验证数据完整性
 	if multiIndicator.Symbol != "BTCUSDT" {
