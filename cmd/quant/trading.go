@@ -21,7 +21,6 @@ func RunTradingStep(symbol string) error {
 	prompt := BuildPrompt(symbol)
 
 	log.Println(prompt)
-	return nil
 	rsp, err := llm.CompletionByParams(llm.SystemMessage(prompt), llm.ToolsByJson(mcpString))
 	if err != nil {
 		return err
