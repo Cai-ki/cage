@@ -227,7 +227,7 @@ func formatPerformanceSummary() string {
 
 	return fmt.Sprintf(
 		"- 决策时间: %s\n"+
-			"- 分析逻辑: \n%s",
+			"- 分析逻辑: \n```\n%s\n```",
 		record.Date,
 		record.Memory,
 	)
