@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Cai-ki/cage/llm/mcp/state"
 	"github.com/Cai-ki/cage/quant"
 	"github.com/Cai-ki/cage/sugar"
 )
@@ -78,7 +79,7 @@ func LoadOrCreatePerformanceRecord() ([]PerformanceRecord, error) {
 }
 
 // 记录交易并增加总交易次数
-func RecordTrade(prompt, decision, toolcalls, memory string, add bool) error {
+func RecordTrade(prompt, decision, toolcalls string, add bool) error {
 	recordMutex.Lock()
 	defer recordMutex.Unlock()
 
@@ -113,7 +114,7 @@ func RecordTrade(prompt, decision, toolcalls, memory string, add bool) error {
 			Prompt:         "",
 			Decision:       "",
 			ToolCalls:      "",
-			Memory:         "无往期记忆",
+			Memory:         "无上次决策回忆",
 		}
 		records = []PerformanceRecord{lastRecord}
 	}
@@ -142,7 +143,13 @@ func RecordTrade(prompt, decision, toolcalls, memory string, add bool) error {
 	newRecord.Prompt = prompt
 	newRecord.Decision = decision
 	newRecord.ToolCalls = toolcalls
-	newRecord.Memory = memory
+
+	memory, ok := state.GetInstance().Get("memory")
+	if ok {
+		newRecord.Memory = memory.(string)
+	} else {
+		newRecord.Memory = "无上次决策回忆"
+	}
 
 	// 添加新记录到数组
 	records = append(records, newRecord)
@@ -227,7 +234,7 @@ func formatPerformanceSummary() string {
 
 	return fmt.Sprintf(
 		"- 决策时间: %s\n"+
-			"- 分析逻辑: \n```\n%s\n```",
+			"- 分析记忆: \n```\n%s\n```",
 		record.Date,
 		record.Memory,
 	)

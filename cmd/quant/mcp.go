@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 
 	"github.com/Cai-ki/cage/llm/mcp"
+	"github.com/Cai-ki/cage/llm/mcp/state"
 	"github.com/Cai-ki/cage/quant"
 )
 
 //go:embed mcp.json
 var mcpString string
-
-var globalMemory string
 
 func init() {
 	type futures_buy_market_args struct {
@@ -50,7 +49,7 @@ func init() {
 		Memory string `json:"memory"`
 	}
 	save_memory := func(args save_memory_args) (interface{}, error) {
-		globalMemory = args.Memory
+		state.GetInstance().Set("memory", args.Memory, state.WithTTL(TimeSlice))
 		return map[string]interface{}{"result": args.Memory}, nil
 	}
 	mcp.RegisterTool("save_memory", save_memory, save_memory_args{})

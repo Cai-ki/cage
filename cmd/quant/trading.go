@@ -5,7 +5,6 @@ import (
 	"log"
 	"math"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Cai-ki/cage/llm"
@@ -40,39 +39,19 @@ func RunTradingStep(symbol string) error {
 		}
 
 		log.Println(toolCallsStr)
-		err := RecordTrade(prompt, rsp.Content, toolCallsStr, globalMemory, len(rsp.ToolCalls) > 1)
+		err := RecordTrade(prompt, rsp.Content, toolCallsStr, len(rsp.ToolCalls) > 1)
 		if err != nil {
 			return err
 		}
 
 	} else {
-		err := RecordTrade(prompt, rsp.Content, "", globalMemory, false)
+		err := RecordTrade(prompt, rsp.Content, "", false)
 		if err != nil {
 			return err
 		}
 	}
 	log.Println("Record trade success")
 	return nil
-}
-
-// 格式化单组 K 线为一行文本：O:H:L:C:V
-func formatKline(k *futures.Kline) string {
-	return fmt.Sprintf("%s:%s:%s:%s:%s", k.Open, k.High, k.Low, k.Close, k.Volume)
-}
-
-// 格式化一组 K 线为多行文本
-func formatKlines(klines []*futures.Kline, err error) string {
-	if err != nil {
-		return fmt.Sprint("error when get kline: ", err)
-	}
-	if len(klines) == 0 {
-		return "No data"
-	}
-	var lines []string
-	for _, k := range klines {
-		lines = append(lines, formatKline(k))
-	}
-	return strings.Join(lines, "\n")
 }
 
 func calculatePnLPercentage(pos *futures.PositionRisk) string {
